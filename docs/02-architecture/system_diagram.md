@@ -67,55 +67,64 @@ flowchart TD
 ```
                  ┌────────────────────────────────────────────────┐
                  │                    Sources                     │
-                 │  Stooq (SPY/VOO/^SPX)  Alpaca News WS  Reddit │
-                 │                 (Gemini LLM optional)         │
-                 └───────────────┬──────────────┬─────────────────┘
-                                 │              │
-                        ingest:prices   ingest:news   ingest:social
-                                 │              │
-                                 ▼              ▼
-                          ┌────────────┐  ┌────────────┐
-                          │  Raw Lake  │  │  Raw Lake  │  (Parquet)
-                          │  prices/   │  │  news/     │  + run_id
-                          │            │  │            │
-                          └──────┬─────┘  └──────┬─────┘
-                                 │              │
-                                 └──────┬───────┘
-                                        │  preprocess:* (time align, dedupe, mapping, lags)
-                                        ▼
-                                  ┌───────────────┐
-                                  │  Curated      │  curated/news, curated/social
-                                  │  text tables  │  (cutoff ≤ 15:30 ET)
-                                  └──────┬────────┘
-                                         │
-                                         ▼
-                                 ┌──────────────────┐
-                                 │  features:build │  (daily row)
-                                 │  price/news/social
-                                 └──────┬────────────┘
+                 │  Stooq (SPY/VOO/^SPX)  Alpaca News WS  Reddit  │
+                 │                (Gemini LLM optional)           │
+                 └──────────────┬──────────────┬──────────────────┘
+                                │              │
+                    ingest:prices   ingest:news   ingest:social
+                                │              │
+                                ▼              ▼
+                         ┌────────────┐  ┌────────────┐
+                         │  Raw Lake  │  │  Raw Lake  │
+                         │  prices/   │  │  news/     │
+                         │  (Parquet) │  │  (Parquet) │
+                         └──────┬─────┘  └──────┬─────┘
+                                │               │
+                                └──────┬────────┘
+                                       │
+                      preprocess:* (time align, dedupe, mapping, lags)
+                                       │
+                                       ▼
+                               ┌──────────────────┐
+                               │    Curated Text  │
+                               │  news / social   │
+                               │ (≤ 15:30 ET)     │
+                               └────────┬─────────┘
                                         │
-             ┌──────────────────────────┼──────────────────────────┐
-             ▼                          ▼                          ▼
-      price_head                   news_head                   social_head
-       (MLP/GBM)                   (MLP/GBM)                   (MLP/GBM)
-             └──────────────┬──────────┴──────────┬──────────────┘
-                            ▼                     ▼
-                     gates from intensity    gates from buzz
-                      (news_count_z,         (post_count_z,
-                        novelty)                novelty)
-                            └──────────────┬──────────────┘
-                                           ▼
-                                 ┌───────────────────┐
-                                 │  gated fusion     │  Score_t
-                                 └─────────┬─────────┘
-                                           │
-                                 ┌─────────▼─────────┐
-                                 │  backtest:run     │  long/flat
-                                 └─────────┬─────────┘
-                                           │
-                              ┌────────────▼────────────┐
-                              │  reports/  & metrics    │
-                              └─────────────────────────┘
+                                        ▼
+                              ┌────────────────────┐
+                              │   features:build   │
+                              │ (daily row: price, │
+                              │  news, social)     │
+                              └────────┬───────────┘
+                                       │
+          ┌────────────────────────────┼──────────────────────────────┐
+          ▼                            ▼                              ▼
+   ┌────────────┐                ┌────────────┐                ┌────────────┐
+   │ price_head │                │ news_head  │                │ social_head│
+   │ (MLP/GBM)  │                │ (MLP/GBM)  │                │ (MLP/GBM)  │
+   └──────┬─────┘                └──────┬─────┘                └──────┬─────┘
+          │                             │                             │
+          └──────────────┬──────────────┴──────────────┬──────────────┘
+                         ▼                             ▼
+                 gates from intensity          gates from buzz
+                (news_count_z, novelty)      (post_count_z, novelty)
+                         └──────────────┬──────────────┘
+                                        ▼
+                               ┌───────────────────┐
+                               │   gated fusion    │
+                               │     (Score_t)     │
+                               └─────────┬─────────┘
+                                         │
+                               ┌─────────▼─────────┐
+                               │   backtest:run    │
+                               │     long/flat     │
+                               └─────────┬─────────┘
+                                         │
+                       ┌─────────────────▼─────────────────┐
+                       │        reports & metrics          │
+                       │   (IC, Sharpe, DD, ablations)     │
+                       └───────────────────────────────────┘
 ```
 
 ## Components

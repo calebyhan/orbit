@@ -1,4 +1,4 @@
-# ORBIT Glossary
+# ORBIT
 
 *Last edited: 2025-11-05*
 
