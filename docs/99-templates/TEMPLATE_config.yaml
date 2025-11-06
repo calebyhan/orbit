@@ -1,0 +1,219 @@
+---
+title: ORBIT — Configuration Template
+last_edited: YYYY-MM-DD
+---
+
+# Minimal Runnable Configuration
+
+```yaml
+# orbit/config/default.yaml
+# Minimal config for SPY/VOO index v1
+
+project:
+  name: "orbit-spy-v1"
+  version: "1.0.0"
+  data_dir: "data"
+  output_dir: "output"
+  log_dir: "logs"
+
+timezone: "America/New_York"
+text_cutoff_time: "15:30:00"
+
+symbols:
+  etf:
+    - SPY
+    - VOO
+  index:
+    - ^SPX
+  vix:
+    - ^VIX
+
+data_sources:
+  stooq:
+    enabled: true
+    url: "https://stooq.com/q/d/l/"
+    format: "csv"
+    symbols:
+      - SPY
+      - VOO
+      - ^SPX
+      - ^VIX
+    retry:
+      max_attempts: 3
+      backoff_seconds: [5, 15, 45]
+
+  alpaca:
+    enabled: true
+    api_key: "${ALPACA_API_KEY}"
+    api_secret: "${ALPACA_API_SECRET}"
+    websocket_url: "wss://stream.data.alpaca.markets/v1beta1/news"
+    symbols:
+      - SPY
+      - VOO
+    rate_limit_rpm: 30
+    timeout_seconds: 300
+
+  reddit:
+    enabled: true
+    client_id: "${REDDIT_CLIENT_ID}"
+    client_secret: "${REDDIT_CLIENT_SECRET}"
+    user_agent: "orbit/1.0"
+    subreddits:
+      - wallstreetbets
+      - investing
+      - stocks
+    rate_limit_qpm: 100
+    min_karma: 100
+    min_account_age_days: 30
+
+  gemini:
+    enabled: true
+    api_key: "${GEMINI_API_KEY}"
+    model: "gemini-1.5-flash"
+    batch_size: 100
+    escalation_threshold: 0.5
+    rate_limit_rpm: 15
+    timeout_seconds: 60
+
+features:
+  price:
+    momentum_windows: [5, 20, 50]
+    volatility_window: 10
+    drawdown_window: 20
+    standardization_window: 252
+
+  news:
+    aggregation_window: 1
+    count_z_window: 60
+    sentiment_methods:
+      - vader
+      - finbert
+      - gemini
+    novelty_window: 7
+    burst_threshold: 2.0
+
+  social:
+    aggregation_window: 1
+    count_z_window: 60
+    sentiment_methods:
+      - vader
+      - finbert
+      - gemini
+    novelty_window: 7
+    credibility_weight_by_karma: true
+    burst_threshold: 2.0
+
+model:
+  architecture: "gated_fusion"
+  heads:
+    price:
+      type: "mlp"
+      hidden_layers: [64, 32, 16]
+      dropout: 0.2
+    news:
+      type: "mlp"
+      hidden_layers: [32, 16]
+      dropout: 0.3
+    social:
+      type: "mlp"
+      hidden_layers: [32, 16]
+      dropout: 0.3
+  fusion:
+    gate_features:
+      - news_count_z
+      - post_count_z
+    gate_threshold: 2.0
+    text_upweight: 3.0
+
+  training:
+    initial_train_days: 252
+    validation_days: 63
+    test_days: 21
+    step_days: 21
+    optimizer: "adam"
+    learning_rate: 0.001
+    batch_size: 32
+    epochs: 100
+    early_stopping_patience: 10
+
+  targets:
+    label: "next_return"
+    lag_days: 1
+    execution: "overnight"
+
+backtest:
+  initial_capital: 100000
+  position_size: 1.0
+  transaction_cost_bps: 2.0
+  slippage_bps: 1.0
+  threshold_long: 0.0005
+  risk_limit_leverage: 1.0
+
+evaluation:
+  metrics:
+    - sharpe_ratio
+    - information_coefficient
+    - hit_rate
+    - max_drawdown
+    - calmar_ratio
+  acceptance:
+    min_sharpe: 0.5
+    min_ic: 0.02
+    min_hit_rate: 0.52
+    max_drawdown: -0.15
+
+logging:
+  level: "INFO"
+  format: "json"
+  rotation_days: 90
+  audit_retention_years: 2
+
+monitoring:
+  drift:
+    ic_window: 20
+    ic_threshold: 0.01
+    psi_threshold: 0.1
+    calibration_bins: 10
+  alerts:
+    email: false
+    slack: false
+```
+
+---
+
+## Usage
+
+```bash
+# Validate config
+python -m orbit.ops.validate_config --config config/default.yaml
+
+# Run with this config
+python -m orbit.main --config config/default.yaml
+```
+
+---
+
+## Environment Variables
+
+Create `.env` file:
+
+```bash
+ALPACA_API_KEY=your_key_here
+ALPACA_API_SECRET=your_secret_here
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+GEMINI_API_KEY=your_gemini_key
+```
+
+---
+
+## Related Files
+
+* `03-config/config_schema.yaml` — Full schema with all options
+* `03-config/env_keys.md` — API key setup guide
+
+---
+
+## Changelog
+
+* YYYY-MM-DDTHH:MM:SS-05:00 — Minimal v1 config template

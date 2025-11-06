@@ -1,0 +1,123 @@
+# ORBIT Sample Config (orbit.yaml)
+
+# Last edited: 2025-11-05
+
+project:
+name: ORBIT
+version: 1
+
+paths:
+data_dir: data/
+raw_dir: data/raw/
+curated_dir: data/curated/
+features_file: data/features/features_daily.parquet
+models_dir: models/
+reports_dir: reports/
+logs_dir: logs/
+
+universe:
+symbols: ["SPY.US", "VOO.US"]
+benchmark: "^SPX"
+
+schedule:
+timezone: "America/New_York"
+cutoff_local: "15:30"
+publish_lag_minutes: 30
+
+sources:
+stooq:
+base_url: "[https://stooq.com/q/d/l/](https://stooq.com/q/d/l/)"
+polite_delay_sec: 1
+retries: 3
+alpaca_news:
+enabled: true
+symbols: ["SPY", "VOO"]
+stream_url: "wss://stream.data.alpaca.markets/v1beta1/news"
+backoff: { initial_ms: 500, max_ms: 10000, factor: 2.0 }
+reddit:
+enabled: true
+subreddits: ["stocks", "investing", "wallstreetbets"]
+query_terms: ["SPY", "VOO", "S&P 500", "market"]
+window_days: 1
+max_items_per_run: 1500
+min_author_karma: 50
+min_account_age_days: 30
+gemini:
+enabled: false
+model: "gemini-2.5-flash-lite"
+batch_size: 200
+escalate_thresholds:
+vader_abs_lt: 0.2
+disagreement: true
+buzz_z_gt: 2.0
+rate_limits: { rpm: 15, tpm: 250000, rpd: 1000 }
+
+preprocessing:
+dedupe:
+method: "cosine"
+similarity_threshold: 0.92
+novelty:
+window_days: 7
+mapping:
+false_positive_blacklist: ["spy camera", "espionage", "v.o.o."]
+
+features:
+price:
+windows: { mom_5: 5, mom_20: 20, rv_10: 10, drawdown_lookback: 252 }
+news:
+zscore_window_days: 60
+sentiment_model: "vader"
+social:
+zscore_window_days: 60
+credibility_cap: 10000
+standardization:
+rolling_window_days: 60
+clip_sigma: 4.0
+
+labels:
+target: "classification"
+use_excess: true
+horizon_days: 1
+
+training:
+split:
+train_months: 12
+val_months: 1
+test_months: 1
+roll_step_months: 1
+seed: 1337
+heads:
+price: { model: "gbm", params: { n_estimators: 200, max_depth: 3 } }
+news:  { model: "gbm", params: { n_estimators: 200, max_depth: 3 } }
+social:{ model: "gbm", params: { n_estimators: 200, max_depth: 3 } }
+fusion:
+type: "gated_blend"
+weights_init: { w_price: 0.6, w_news: 0.2, w_social: 0.2 }
+gates:
+news_inputs: ["news_count_z", "news_novelty"]
+social_inputs: ["social_post_count_z", "social_novelty"]
+activation: "sigmoid"
+
+backtest:
+execution:
+trade_at: "next_open"
+costs_bps_per_side: 2
+slippage_bps_per_side: 2
+decision:
+classification:
+threshold_long: 0.55
+regression:
+min_expected_bps: 3
+flatten_on_missing_data: true
+
+evaluation:
+metrics: ["IC", "AUC", "Brier", "Sharpe", "MaxDrawdown", "HitRate", "Coverage"]
+ablations: { enabled: true }
+
+logging:
+level: "info"
+run_id: "auto"
+
+compliance:
+user_agent: "ORBIT/1.0 ([+your_email@example.com](mailto:+your_email@example.com))"
+tos_acknowledged: true
