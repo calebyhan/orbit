@@ -1,5 +1,5 @@
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
@@ -199,7 +199,145 @@ Define the **phased development roadmap** from M0 (price-only baseline) to M3 (p
 
 ---
 
-## Milestone 6: Live Trading (TBD)
+## Milestone 6: Web Dashboard (2 weeks)
+
+**Goal:** Build interactive web dashboard for real-time monitoring and historical analysis of ORBIT signals and performance.
+
+### Deliverables
+
+* [ ] **Frontend Framework:** React/Next.js or Streamlit dashboard
+* [ ] **Live Metrics View:**
+  - Current day signal strength (fused score + modality breakdown)
+  - Real-time ingestion status (news/social/prices completeness)
+  - Current market regime (VIX, volatility, regime classification)
+  - Gate activation status (news burst, social burst indicators)
+* [ ] **Performance Charts:**
+  - Equity curve (cumulative returns vs SPY benchmark)
+  - Rolling IC/Sharpe (30d, 90d, 1y windows)
+  - Win rate and avg profit per trade
+  - Drawdown visualization
+* [ ] **Feature Monitoring:**
+  - Feature distributions over time (PSI heatmap)
+  - Z-score anomaly detection (outlier days)
+  - Text data quality scores (news/social completeness)
+  - Modality weight evolution (fusion gate history)
+* [ ] **Ablation Comparison:**
+  - Price-only vs Price+News vs All-modalities IC
+  - Regime-stratified performance (Low/Normal/Elevated/Crisis)
+  - Monthly breakdown table
+* [ ] **Alert Dashboard:**
+  - Active drift warnings
+  - Data quality issues (missing/partial days)
+  - Model performance degradation alerts
+  - Regime transition notifications
+* [ ] **Historical Drill-Down:**
+  - Single-day view: features → head scores → fusion → final signal
+  - Trade log with execution details
+  - News/social content viewer for specific dates
+* [ ] **API Endpoints:**
+  - RESTful API for dashboard data (`/api/metrics`, `/api/signals`, `/api/trades`)
+  - WebSocket feed for real-time updates (optional)
+
+### Technical Stack Options
+
+**Selected Stack: Next.js + Supabase (Serverless-First)**
+
+**Architecture:**
+- **Frontend:** Next.js 14+ (React) with App Router
+  - Deployed on Vercel (serverless, automatic scaling)
+  - Server Components for data fetching
+  - Client Components for interactive charts
+- **Backend API:** Next.js API Routes (serverless functions)
+  - `/api/metrics` → Read from Parquet/S3
+  - `/api/signals` → Latest model scores
+  - `/api/trades` → Historical trade log
+- **Authentication:** Supabase Auth
+  - Email/password or magic link
+  - Row-level security policies
+  - JWT-based session management
+- **Database (optional):** Supabase Postgres
+  - Use only if Parquet reads become bottleneck
+  - Cache aggregated metrics (daily IC, equity curve points)
+  - Keep raw data in Parquet, use DB for dashboard queries
+- **Storage:** 
+  - Primary: Read Parquet files from S3/local filesystem
+  - Cache: Supabase Storage or Vercel Blob for processed artifacts
+- **Charting:** Recharts or Tremor (React-native, lightweight)
+- **Styling:** Tailwind CSS + shadcn/ui components
+
+**Serverless Benefits:**
+- Zero DevOps: No servers to manage
+- Auto-scaling: Handles traffic spikes during market hours
+- Cost-effective: Pay only for compute time used
+- Fast deployment: Push to GitHub → Vercel auto-deploys
+
+**Data Flow:**
+```
+Parquet files (S3/local)
+    ↓
+Next.js API Routes (read on-demand)
+    ↓
+Server Components (pre-render metrics)
+    ↓
+Client Components (interactive charts)
+```
+
+**Authentication Flow:**
+```
+User → Supabase Auth → JWT token → Next.js middleware → Protected routes
+```
+
+**Future Expansion (Post-v1):**
+- If performance becomes issue: Add Redis cache (Upstash serverless)
+- If real-time needed: Add Supabase Realtime subscriptions
+- If complex queries needed: Migrate aggregated data to Supabase Postgres
+
+### Acceptance Criteria
+
+* **Latency:** Dashboard loads in <3 seconds (Next.js SSR + edge caching)
+* **Real-time updates:** Signal/status updates within 30 seconds of pipeline completion
+* **Historical range:** Can view data back to start of backtest (2020+)
+* **Mobile responsive:** Usable on tablet/phone for on-the-go monitoring
+* **Uptime:** Dashboard available 99.9% (Vercel SLA)
+* **Security:** 
+  - Supabase Auth required (email/password or magic link)
+  - Row-level security policies for multi-user (if needed)
+  - API routes validate JWT tokens
+  - No public access to raw data endpoints
+
+### Implementation Notes
+
+**Phase 1: MVP (Week 1)**
+- Next.js app scaffolding with Supabase Auth
+- Read Parquet files from local filesystem
+- Display: Equity curve, current signal, last 30 days IC
+- Deploy to Vercel
+
+**Phase 2: Full Features (Week 2)**
+- Add all metric views (ablations, regimes, feature monitoring)
+- Integrate Recharts for interactive charts
+- Add drill-down views (single day analysis)
+- Alert dashboard integration
+- Polish UI with Tailwind + shadcn/ui
+
+**Serverless Considerations:**
+- API routes have 10s timeout on Vercel Hobby (60s on Pro)
+- For large Parquet reads: Pre-compute aggregations, cache results
+- Consider edge functions for frequently accessed metrics
+- Use Incremental Static Regeneration (ISR) for semi-static pages
+
+### Exit Criteria
+
+* Dashboard deployed and accessible via web browser
+* All key metrics from `monitoring_dashboards.md` integrated
+* Stakeholders can monitor ORBIT without reading logs
+* Documented in `10-operations/web_dashboard_guide.md`
+
+**Status:** 🔴 **Not Started** (requires M4 deployment infrastructure)
+
+---
+
+## Milestone 7: Live Trading (TBD)
 
 **Goal:** Execute real trades based on ORBIT signals (if desired).
 
@@ -241,6 +379,8 @@ See `11-roadmap/extend_to_single_stocks.md` and `future_data_sources.md` for:
 | M3: Calibration | 🔴 Blocked | 0% | Waiting for M2 | 2025-01-05 |
 | M4: Deployment | 🔴 Not Started | 0% | None | 2025-01-20 |
 | M5: Paper Trading | 🔴 Not Started | 0% | None | 2025-02-20 |
+| M6: Web Dashboard | 🔴 Not Started | 0% | Waiting for M4 | 2025-02-25 |
+| M7: Live Trading | 🔴 Not Started | 0% | Risk approval | TBD |
 
 **Last Updated:** 2024-11-05T21:05:00-05:00  
 **Next Review:** 2024-11-12

@@ -28,40 +28,50 @@ Per day *T* (already point‑in‑time safe):
 
 ## Formulation (classification)
 
-Let base weights ( w = (w_p, w_n, w_s) ) with ( w_k ≥ 0, \sum w_k = 1 ).
+Let base weights $w = (w_p, w_n, w_s)$ with $w_k ≥ 0, \sum w_k = 1$.
 
 Define **gate activations** (0..1) via a sigmoid over linear terms:
-[
-g_n = \sigma(\alpha_{n0} + \alpha_{n1} \cdot \text{gate_news_intensity} + \alpha_{n2} \cdot \text{gate_news_novelty})
-]
-[
-g_s = \sigma(\alpha_{s0} + \alpha_{s1} \cdot \text{gate_soc_intensity} + \alpha_{s2} \cdot \text{gate_soc_novelty})
-]
+
+$$
+g_n = \sigma(\alpha_{n0} + \alpha_{n1} \cdot \text{gate\_news\_intensity} + \alpha_{n2} \cdot \text{gate\_news\_novelty})
+$$
+
+$$
+g_s = \sigma(\alpha_{s0} + \alpha_{s1} \cdot \text{gate\_soc\_intensity} + \alpha_{s2} \cdot \text{gate\_soc\_novelty})
+$$
 
 **Data Quality Adjustment:**
 Multiply gate activations by respective data quality scores to down-weight unreliable partial-day captures:
-[
-g_n^{adjusted} = g_n \cdot \text{news_data_quality}
-]
-[
-g_s^{adjusted} = g_s \cdot \text{soc_data_quality}
-]
+
+$$
+g_n^{adjusted} = g_n \cdot \text{news\_data\_quality}
+$$
+
+$$
+g_s^{adjusted} = g_s \cdot \text{soc\_data\_quality}
+$$
+
 On days with `data_quality < 0.5`, the corresponding text modality effectively gets zero gate boost. This allows the price head to dominate when text data is unreliable.
 
 Blend weights with a **convex re‑normalization** using **quality-adjusted gates**:
-[
-\tilde{w}_p = w_p \cdot (1 - \beta_n g_n^{adjusted}) \cdot (1 - \beta_s g_s^{adjusted}),\quad
-\tilde{w}_n = w_n \cdot (1 + \beta_n g_n^{adjusted}),\quad
-\tilde{w}_s = w_s \cdot (1 + \beta_s g_s^{adjusted})
-]
-Normalize: ( \bar{w}_k = \tilde{w}_k / \sum_j \tilde{w}_j ).
+
+$$
+\begin{aligned}
+\tilde{w}_p &= w_p \cdot (1 - \beta_n g_n^{adjusted}) \cdot (1 - \beta_s g_s^{adjusted}) \\
+\tilde{w}_n &= w_n \cdot (1 + \beta_n g_n^{adjusted}) \\
+\tilde{w}_s &= w_s \cdot (1 + \beta_s g_s^{adjusted})
+\end{aligned}
+$$
+
+Normalize: $\bar{w}_k = \tilde{w}_k / \sum_j \tilde{w}_j$.
 
 Final probability:
-[
-p^{fuse}_t = \bar{w}_p p^{price}_t + \bar{w}_n p^{news}_t + \bar{w}_s p^{social}_t
-]
 
-Parameters to learn: ( w, \alpha_{n*}, \alpha_{s*}, \beta_n, \beta_s ).
+$$
+p^{fuse}_t = \bar{w}_p p^{price}_t + \bar{w}_n p^{news}_t + \bar{w}_s p^{social}_t
+$$
+
+Parameters to learn: $w, \alpha_{n*}, \alpha_{s*}, \beta_n, \beta_s$.
 
 ### Regression variant
 
@@ -73,19 +83,19 @@ Replace probabilities with expected returns and minimize squared error on `label
 
 * **Objective:**
 
-  * Classification: minimize **logloss** of ( p^{fuse}_t ) vs `label_updown` on **validation** slices within each walk‑forward window.
+  * Classification: minimize **logloss** of $p^{fuse}_t$ vs `label_updown` on **validation** slices within each walk‑forward window.
   * Regression: minimize **RMSE** vs `label_ret_bps`.
 * **Procedure (per window):**
 
   1. Freeze head models; compute head scores on train/val.
-  2. Optimize ( w, \alpha, \beta ) on **validation** via small gradient‑based optimizer or grid search.
-  3. Enforce constraints: ( w_k ≥ 0 ), sum to 1; ( \beta_* ≥ 0 ); regularize ( |\alpha|_2 ) to avoid over‑reactive gates.
-* **Initialization:** from config `fusion.weights_init` (e.g., `w_p=0.6, w_n=0.2, w_s=0.2`); ( \alpha=0, \beta=1 ).
+  2. Optimize $w, \alpha, \beta$ on **validation** via small gradient‑based optimizer or grid search.
+  3. Enforce constraints: $w_k ≥ 0$, sum to 1; $\beta_* ≥ 0$; regularize $|\alpha|_2$ to avoid over‑reactive gates.
+* **Initialization:** from config `fusion.weights_init` (e.g., `w_p=0.6, w_n=0.2, w_s=0.2`); $\alpha=0, \beta=1$.
 
 ### Regularization & stability
 
-* **L2** on (\alpha), small **L1** on ((\beta_n, \beta_s)) to keep gates conservative.
-* Cap gate outputs: optionally clip ( g_* \in [0, 0.95] ) in training.
+* **L2** on $\alpha$, small **L1** on $\beta_n, \beta_s$ to keep gates conservative.
+* Cap gate outputs: optionally clip $g_* \in [0, 0.95]$ in training.
 
 ---
 

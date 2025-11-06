@@ -21,11 +21,11 @@ We support **one active task at a time** (set in `labels.target`):
 
 ## Base returns
 
-Let `P_t` be the selected price for day *t* (see **Execution price**), and define simple returns:
+Let $P_t$ be the selected price for day *t* (see **Execution price**), and define simple returns:
 
-* **ETF return:** ( r^{ETF}*{t+1} = \frac{P*{t+1}}{P_t} - 1 )
-* **Index return:** ( r^{SPX}*{t+1} = \frac{I*{t+1}}{I_t} - 1 ) where `I_t` is ^SPX close.
-* **Excess return:** ( r^{EX}*{t+1} = r^{ETF}*{t+1} - r^{SPX}_{t+1} )
+* **ETF return:** $r^{ETF}_{t+1} = \frac{P_{t+1}}{P_t} - 1$
+* **Index return:** $r^{SPX}_{t+1} = \frac{I_{t+1}}{I_t} - 1$ where `I_t` is ^SPX close.
+* **Excess return:** $r^{EX}_{t+1} = r^{ETF}_{t+1} - r^{SPX}_{t+1}$
 
 The choice of **ETF** for training is `SPY.US`; we validate on `VOO.US` for out‑of‑sample sanity.
 
@@ -35,8 +35,8 @@ The choice of **ETF** for training is `SPY.US`; we validate on `VOO.US` for out�
 
 The label horizon and price points must match the backtest execution rule (`backtest.execution.trade_at`):
 
-* `next_open`: ( P_t = \text{Close}*t,; P*{t+1} = \text{Open}_{t+1} )
-* `next_close`: ( P_t = \text{Close}*t,; P*{t+1} = \text{Close}_{t+1} )
+* `next_open`: $P_t = \text{Close}_t, P_{t+1} = \text{Open}_{t+1}$
+* `next_close`: $P_t = \text{Close}_t, P_{t+1} = \text{Close}_{t+1}$
 
 > ORBIT defaults to **next_open** to avoid using any information from day *t+1* intraday text; only prices are used.
 
@@ -66,13 +66,13 @@ Day T+1: 09:35 ET → Label for T now available, compute IC(score_T, label_T)
 
 ### 1) Classification
 
-* **Direction (ETF):** ( y_{t}^{clf} = \mathbb{1}{ r^{ETF}_{t+1} > 0 } )
-* **Direction (Excess):** if `labels.use_excess: true`, then ( y_{t}^{clf} = \mathbb{1}{ r^{EX}_{t+1} > 0 } )
+* **Direction (ETF):** $y_{t}^{clf} = \mathbb{1}\{r^{ETF}_{t+1} > 0\}$
+* **Direction (Excess):** if `labels.use_excess: true`, then $y_{t}^{clf} = \mathbb{1}\{r^{EX}_{t+1} > 0\}$
 
 ### 2) Regression
 
-* **Raw return (ETF):** ( y_{t}^{reg} = r^{ETF}_{t+1} )
-* **Excess return:** if `labels.use_excess: true`, use ( y_{t}^{reg} = r^{EX}_{t+1} )
+* **Raw return (ETF):** $y_{t}^{reg} = r^{ETF}_{t+1}$
+* **Excess return:** if `labels.use_excess: true`, use $y_{t}^{reg} = r^{EX}_{t+1}$
 * Store both **decimal** and **bps** (`*10000`) for convenience.
 
 All labels are stored alongside the features row as `label_updown` (0/1) and/or `label_ret` (float), with a `label_basis ∈ {ETF, EXCESS}` tag.
