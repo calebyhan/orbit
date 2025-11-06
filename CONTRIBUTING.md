@@ -12,7 +12,7 @@ Thank you for your interest in ORBIT (Observational Reasoning & Behavior-Integra
 
 * **Caleb Han** ([@calebyhan](https://github.com/calebyhan))
 * **Jesse Hao** ([@jessehao05](https://github.com/jessehao05))
-* 
+* **Lucas Poudyal** ([@LPoudyal](https://github.com/LPoudyal))
 
 ---
 
