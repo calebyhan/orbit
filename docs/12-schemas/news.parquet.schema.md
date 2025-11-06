@@ -1,5 +1,5 @@
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## File Location
 
@@ -23,6 +23,9 @@
 | `novelty_score` | `float64` | Yes | Dissimilarity to prior 7d (0 to 1) |
 | `content_hash` | `string` | No | Hash for deduplication |
 | `ingestion_ts` | `timestamp` | No | When ingested (ET) |
+| `ingestion_complete` | `bool` | No | True if full day captured without gaps |
+| `ingestion_gaps_minutes` | `int32` | Yes | Total minutes of known disconnection/outage |
+| `last_successful_fetch_utc` | `timestamp` | Yes | Last successful WS message received |
 
 ## Sample Row
 
@@ -41,7 +44,10 @@
   "sentiment_gemini": null,
   "novelty_score": 0.87,
   "content_hash": "sha256:abc123...",
-  "ingestion_ts": "2024-11-05T15:30:02-05:00"
+  "ingestion_ts": "2024-11-05T15:30:02-05:00",
+  "ingestion_complete": true,
+  "ingestion_gaps_minutes": 0,
+  "last_successful_fetch_utc": "2024-11-05T20:30:02+00:00"
 }
 ```
 
@@ -51,6 +57,42 @@
 - `published_at` ≤ `ingestion_ts`
 - At least one symbol mapped
 - Sentiment scores in [-1, 1] if present
+- `ingestion_gaps_minutes` ≥ 0 (0 if complete)
+- `ingestion_complete` = False if gaps > 30 minutes
+
+## Data Completeness Tracking
+
+**Purpose:** Track WebSocket connection quality to detect partial day captures.
+
+**Fields:**
+- `ingestion_complete`: Set to `False` if WS disconnection lasted >5 minutes or if <80% of expected trading hours covered
+- `ingestion_gaps_minutes`: Sum of all disconnection periods during trading hours (9:30-15:30 ET)
+- `last_successful_fetch_utc`: Updated with each successful WS message; used to detect stale connections
+
+**Example Scenarios:**
+
+**Scenario 1: Complete Day**
+```python
+ingestion_complete = True
+ingestion_gaps_minutes = 0
+# All hours from 9:30-15:30 ET captured
+```
+
+**Scenario 2: Brief Disconnect**
+```python
+ingestion_complete = True
+ingestion_gaps_minutes = 3
+# WS disconnected 11:00-11:03 (3 min), reconnected successfully
+# Still considered complete (< 5 min gap)
+```
+
+**Scenario 3: Major Outage**
+```python
+ingestion_complete = False
+ingestion_gaps_minutes = 180
+# WS disconnected 11:00-14:00 (3 hours), missing significant data
+# Marked incomplete
+```
 
 ## Related Files
 

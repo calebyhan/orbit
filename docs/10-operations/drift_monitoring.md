@@ -1,5 +1,5 @@
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
@@ -38,13 +38,23 @@ Detect **model performance degradation** and **feature distribution shifts** ove
 
 ## Monitoring Frequency
 
-| Metric | Check Frequency | Alert Threshold |
-|--------|-----------------|-----------------|
-| Daily IC | Daily (after scoring) | 10-day MA < 0.005 |
-| Rolling Sharpe | Weekly | 60-day Sharpe < 0.15 |
-| Feature PSI | Weekly | Any feature PSI > 0.25 |
-| Prediction calibration | Monthly | Brier score ↑ >10% |
-| Label distribution | Monthly | Vol ↑ >50% vs training |
+Frequency adapts based on **market regime** (see `regime_transition_protocol.md`):
+
+| Regime       | IC Check Frequency | Feature Drift Check | Alert Threshold (10d MA IC) |
+| ------------ | ------------------ | ------------------- | --------------------------- |
+| **Low Vol**  | Weekly (Mon AM)    | Weekly              | < 0.005                     |
+| **Normal**   | 2×/week (Mon/Thu)  | Every 3 days        | < 0.005                     |
+| **Elevated** | Daily (9:35 AM)    | Daily               | < 0.000 (neutral)           |
+| **Crisis**   | Hourly             | Continuous          | < −0.05 (negative)          |
+
+**Additional Metrics:**
+
+| Metric                  | Check Frequency | Alert Threshold        |
+| ----------------------- | --------------- | ---------------------- |
+| Rolling Sharpe          | Weekly          | 60-day Sharpe < 0.15   |
+| Feature PSI             | Per regime      | Any feature PSI > 0.25 |
+| Prediction calibration  | Monthly         | Brier score ↑ >10%     |
+| Label distribution      | Monthly         | Vol ↑ >50% vs training |
 
 ---
 
@@ -407,6 +417,7 @@ python -m orbit.ops.enable_enhanced_monitoring --run-id <new> --duration 30d
 
 ## Related Files
 
+* `regime_transition_protocol.md` — Regime-based monitoring frequency
 * `runbook.md` — Daily operations
 * `data_quality_checks.md` — Ingestion validation
 * `logging_audit.md` — What gets logged

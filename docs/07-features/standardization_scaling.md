@@ -1,6 +1,6 @@
 # ORBIT — Standardization & Scaling
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
@@ -12,6 +12,56 @@ Ensure features are on comparable scales and **point‑in‑time safe** by apply
 * **Warmup NA**: a feature remains **NA** until enough past observations exist.
 * **Clipping**: reduce tail sensitivity while keeping order statistics.
 * **Deterministic**: same inputs + seed ⇒ same outputs.
+* **Strict lookback discipline**: Windows never include the current day to prevent data leakage.
+
+---
+
+## Anti-Leak Window Discipline
+
+**Critical Rule:** When computing rolling z-scores for day T, the window must be **EXCLUSIVE** of day T itself.
+
+**Correct Window:**
+- For day T with 60-day window: Use days [T-60, T-1] (inclusive of T-1, exclusive of T)
+- Formula: `window = [T - window_days, T - 1]`
+
+**Example:**
+```python
+# Computing z-score for day 253 with 60-day window
+# CORRECT: Use days 193-252 (60 days before day 253)
+# WRONG: Use days 194-253 (includes current day - LEAKAGE)
+# WRONG: Use days 1-252 (full history - wrong window size)
+```
+
+**Why This Matters:**
+Including day T in its own z-score computation creates **subtle data leakage** because:
+1. The current day's value influences its own standardization
+2. Extreme values on day T would appear "less extreme" in their own z-score
+3. This inflates backtest performance metrics artificially
+
+**Implementation:**
+```python
+def zscore_rolling(series, window=60, clip=4.0):
+    # Shift by 1 ensures we only use T-1 and earlier
+    mu = series.shift(1).rolling(window).mean()
+    sigma = series.shift(1).rolling(window).std(ddof=0)
+    z = (series - mu) / sigma
+    z = z.where((mu.notna()) & (sigma > 0))
+    return z.clip(-clip, clip)
+```
+
+**Walk-Forward Training Context:**
+- Training window: Days 1-252
+- Validation window: Days 253-273
+- Test window: Days 274-294
+
+When computing features for validation day 253:
+- ✅ **Correct:** Z-score uses days 193-252 (60 days ending at 252)
+- ❌ **Wrong:** Z-score uses days 193-253 (includes current day)
+- ❌ **Wrong:** Z-score uses days 1-252 (full training window, wrong size)
+
+This discipline applies to **all rolling statistics**: z-scores, moving averages, rolling volatility, etc.
+
+---
 
 ## Procedure
 
@@ -49,6 +99,7 @@ def zscore_rolling(series, window=60, clip=4.0):
 
 * Count NA rates per feature; ensure warmup behavior is expected.
 * Verify no look‑ahead by checking that z‑scores for day *t* are unchanged when you extend the data by future rows.
+* **Lookback validation test:** Compute z-score for day T with data through T+10; verify z-score(T) is identical when recomputed with data through T only.
 * Monitor feature distributions monthly for drift; adjust W/clip if necessary.
 
 ## Acceptance checklist

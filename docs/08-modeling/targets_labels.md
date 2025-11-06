@@ -1,6 +1,6 @@
 # ORBIT — Targets & Labels
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
@@ -39,6 +39,26 @@ The label horizon and price points must match the backtest execution rule (`back
 * `next_close`: ( P_t = \text{Close}*t,; P*{t+1} = \text{Close}_{t+1} )
 
 > ORBIT defaults to **next_open** to avoid using any information from day *t+1* intraday text; only prices are used.
+
+### Label Availability Timing
+
+Labels become available for computing IC (Information Coefficient) and drift monitoring at the following times:
+
+* **Overnight variant (`next_open`):** Labels available at **9:35 AM ET on T+1** (5 minutes after market open for price stabilization)
+* **Intraday-next variant (`next_close`):** Labels available at **4:05 PM ET on T+1** (5 minutes after market close for final settlement)
+
+**Operational Impact:**
+* IC metrics for day *T* can be computed and logged starting at the label availability time
+* Drift monitoring (`drift_monitoring.md`) schedules IC checks based on execution variant + regime
+* Walk-forward retraining can access labels up to *T−1* only when training on day *T*
+
+**Example Timeline (next_open):**
+```
+Day T:   15:30 ET → Cutoff, features locked, model scores
+Day T:   16:00 ET → Market close
+Day T+1: 09:30 ET → Market open
+Day T+1: 09:35 ET → Label for T now available, compute IC(score_T, label_T)
+```
 
 ---
 
@@ -133,5 +153,6 @@ labels = pd.DataFrame({
 ## Related Files
 
 * `06-preprocessing/time_alignment_cutoffs.md` — Label timing
-* `09-evaluation/backtest_long_flat_spec.md` — Execution variants
+* `09-scoring-backtest/backtest_rules.md` — Execution variants
+* `10-operations/drift_monitoring.md` — IC computation schedule
 * `12-schemas/features_daily.parquet.schema.md` — Label columns

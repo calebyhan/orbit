@@ -1,6 +1,6 @@
 # ORBIT — Fusion: Gated Blend
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
@@ -15,8 +15,8 @@ Per day *T* (already point‑in‑time safe):
 * Head scores: `price_head_score_t`, `news_head_score_t`, `social_head_score_t` (probabilities for classification or expected bps for regression).
 * Gate features (from 07‑features):
 
-  * News gates: `gate_news_intensity`, `gate_news_novelty`
-  * Social gates: `gate_soc_intensity`, `gate_soc_novelty`
+  * News gates: `gate_news_intensity`, `gate_news_novelty`, `news_data_quality`
+  * Social gates: `gate_soc_intensity`, `gate_soc_novelty`, `soc_data_quality`
 * Optional: additional regime covariates (e.g., `rv_10d_spx`).
 
 ## Output
@@ -38,11 +38,21 @@ g_n = \sigma(\alpha_{n0} + \alpha_{n1} \cdot \text{gate_news_intensity} + \alpha
 g_s = \sigma(\alpha_{s0} + \alpha_{s1} \cdot \text{gate_soc_intensity} + \alpha_{s2} \cdot \text{gate_soc_novelty})
 ]
 
-Blend weights with a **convex re‑normalization**:
+**Data Quality Adjustment:**
+Multiply gate activations by respective data quality scores to down-weight unreliable partial-day captures:
 [
-\tilde{w}_p = w_p \cdot (1 - \beta_n g_n) \cdot (1 - \beta_s g_s),\quad
-\tilde{w}_n = w_n \cdot (1 + \beta_n g_n),\quad
-\tilde{w}_s = w_s \cdot (1 + \beta_s g_s)
+g_n^{adjusted} = g_n \cdot \text{news_data_quality}
+]
+[
+g_s^{adjusted} = g_s \cdot \text{soc_data_quality}
+]
+On days with `data_quality < 0.5`, the corresponding text modality effectively gets zero gate boost. This allows the price head to dominate when text data is unreliable.
+
+Blend weights with a **convex re‑normalization** using **quality-adjusted gates**:
+[
+\tilde{w}_p = w_p \cdot (1 - \beta_n g_n^{adjusted}) \cdot (1 - \beta_s g_s^{adjusted}),\quad
+\tilde{w}_n = w_n \cdot (1 + \beta_n g_n^{adjusted}),\quad
+\tilde{w}_s = w_s \cdot (1 + \beta_s g_s^{adjusted})
 ]
 Normalize: ( \bar{w}_k = \tilde{w}_k / \sum_j \tilde{w}_j ).
 
@@ -89,16 +99,21 @@ p_price, p_news, p_social = head_scores[T]
 z_n = a_n0 + a_n1*gate_news_intensity[T] + a_n2*gate_news_novelty[T]
 z_s = a_s0 + a_s1*gate_soc_intensity[T]  + a_s2*gate_soc_novelty[T]
 g_n = sigmoid(z_n)
- g_s = sigmoid(z_s)
+g_s = sigmoid(z_s)
+# quality adjustment
+g_n_adj = g_n * news_data_quality[T]
+g_s_adj = g_s * soc_data_quality[T]
 # reweight
 w_tilde = {
-  'p': w_p * (1 - beta_n*g_n) * (1 - beta_s*g_s),
-  'n': w_n * (1 + beta_n*g_n),
-  's': w_s * (1 + beta_s*g_s),
+  'p': w_p * (1 - beta_n*g_n_adj) * (1 - beta_s*g_s_adj),
+  'n': w_n * (1 + beta_n*g_n_adj),
+  's': w_s * (1 + beta_s*g_s_adj),
 }
 sum_w = sum(w_tilde.values())
 w_bar = {k: v/sum_w for k,v in w_tilde.items()}
 # fused score
+p_fuse = w_bar['p']*p_price + w_bar['n']*p_news + w_bar['s']*p_social
+```
 p_fuse = w_bar['p']*p_price + w_bar['n']*p_news + w_bar['s']*p_social
 ```
 

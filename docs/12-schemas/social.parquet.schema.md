@@ -1,5 +1,5 @@
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## File Location
 
@@ -28,6 +28,9 @@
 | `novelty_score` | `float64` | Yes | Dissimilarity to prior 7d (0 to 1) |
 | `content_hash` | `string` | No | Hash for deduplication |
 | `ingestion_ts` | `timestamp` | No | When ingested (ET) |
+| `ingestion_complete` | `bool` | No | True if full day captured without gaps |
+| `ingestion_gaps_minutes` | `int32` | Yes | Total minutes of known API rate limiting |
+| `last_successful_fetch_utc` | `timestamp` | Yes | Last successful API response |
 
 ## Sample Row
 
@@ -51,7 +54,10 @@
   "sarcasm_flag": false,
   "novelty_score": 0.34,
   "content_hash": "sha256:def456...",
-  "ingestion_ts": "2024-11-05T15:35:12-05:00"
+  "ingestion_ts": "2024-11-05T15:35:12-05:00",
+  "ingestion_complete": true,
+  "ingestion_gaps_minutes": 0,
+  "last_successful_fetch_utc": "2024-11-05T20:35:12+00:00"
 }
 ```
 
@@ -62,6 +68,41 @@
 - `created_utc` ≤ `ingestion_ts`
 - Sentiment scores in [-1, 1] if present
 - At least one symbol mapped
+- `ingestion_gaps_minutes` ≥ 0
+
+## Data Completeness Tracking
+
+**Purpose:** Track Reddit API availability to detect rate-limited or partial captures.
+
+**Fields:**
+- `ingestion_complete`: Set to `False` if API rate limited for >30 minutes or if <50% of expected batches completed
+- `ingestion_gaps_minutes`: Sum of time periods when API was rate-limited or unreachable
+- `last_successful_fetch_utc`: Updated with each successful API call; used to detect API issues
+
+**Example Scenarios:**
+
+**Scenario 1: Complete Day**
+```python
+ingestion_complete = True
+ingestion_gaps_minutes = 0
+# All scheduled batches (e.g., 2-6 batches throughout day) completed
+```
+
+**Scenario 2: Brief Rate Limit**
+```python
+ingestion_complete = True
+ingestion_gaps_minutes = 15
+# Rate limited for 15 minutes, then recovered
+# Still considered complete (< 30 min gap)
+```
+
+**Scenario 3: Extended Rate Limiting**
+```python
+ingestion_complete = False
+ingestion_gaps_minutes = 120
+# Rate limited 1:00-3:00 PM, only morning data captured
+# Marked incomplete
+```
 
 ## Related Files
 

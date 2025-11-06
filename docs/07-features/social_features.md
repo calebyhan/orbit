@@ -1,6 +1,6 @@
 # ORBIT — Social Features (Daily)
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
@@ -18,6 +18,8 @@ From `data/curated/social/` (see 04‑data‑sources & 06‑preprocessing). Requ
 * `sarcasm_rate: float` (0..1, if LLM available else 0)
 * `novelty: float` (0..1, vs prior 7d)
 * `last_item_ts: timestamp[ns, UTC]`
+* `ingestion_complete: bool` — Whether Reddit API completed full day ingestion without gaps
+* `ingestion_gaps_minutes: int` — Total minutes of missing data due to API limits/disconnects
 
 Optional LLM fields per curated policy:
 
@@ -39,6 +41,7 @@ All features are later standardized per `standardization_scaling.md`.
 | `soc_sent_abs_mean`    | `abs(soc_sent_mean)`                               | [0,1]                   |
 | `soc_sarcasm_rate`     | copy of `sarcasm_rate`                             | 0..1 (0 if unavailable) |
 | `soc_recency_min`      | minutes between **cutoff** and `last_item_ts` (ET) | ≥0                      |
+| `soc_data_quality`     | `max(0, 1 − ingestion_gaps_minutes/360)`           | [0,1]; 1.0 if complete  |
 | `gate_soc_intensity`   | alias of `soc_burst`                               | fusion gate input       |
 | `gate_soc_novelty`     | alias of `soc_novelty`                             | fusion gate input       |
 
@@ -50,9 +53,38 @@ All features are later standardized per `standardization_scaling.md`.
 | `soc_stance_bull_share` | copy of `stance_bull_share` (0..1) |
 | `soc_stance_bear_share` | copy of `stance_bear_share` (0..1) |
 
+## Data Quality Handling
+
+**Data Quality Score:**
+```
+soc_data_quality = max(0, 1 - ingestion_gaps_minutes / 360)
+# 360 minutes = 6 hours (full trading day expectation)
+```
+
+**Handling Rules:**
+* **If quality < 0.5:** Treat as missing day — set all `soc_*` features to **0** (including sentiments, novelty, burst).
+* **If 0.5 ≤ quality < 1.0:** Partial-day capture — include `soc_data_quality` feature, compute other features normally from available data.
+* **If quality == 1.0:** Complete ingestion — normal processing, `soc_data_quality = 1.0`.
+
+**Model Usage:**
+The fusion gate (see `fusion_gated_blend.md`) will down-weight social head predictions on partial-data days by multiplying gate values by `soc_data_quality`. This allows the model to learn which quality thresholds are reliable vs unreliable.
+
+**Examples:**
+```python
+# 0 gaps → quality = 1.0 (complete day)
+# 30 min gaps → quality ≈ 0.917 (partial, usable)
+# 180 min gaps → quality = 0.5 (borderline)
+# 360+ min gaps → quality = 0.0 (treat as missing)
+```
+
+**Distinguishing Data Capture vs Quiet Day:**
+* **Low `post_count` + quality = 1.0:** Truly quiet day (valid signal)
+* **Low `post_count` + quality < 0.5:** Data capture issue (treat as missing)
+
 ## Defaults & NA rules
 
-* If `post_count == 0`: set `soc_*` sentiments/novelty/sarcasm to **0**, `soc_recency_min = 0`, `soc_presence = 0`.
+* If `post_count == 0` **and** `quality ≥ 0.5`: set `soc_*` sentiments/novelty/sarcasm to **0**, `soc_recency_min = 0`, `soc_presence = 0`.
+* If **quality < 0.5:** set **all** `soc_*` features to **0** (unreliable partial day).
 * Z‑scores like `soc_post_count_z` are **NA** until the 60‑day window exists; **do not** forward‑fill.
 
 ## Clipping & caps

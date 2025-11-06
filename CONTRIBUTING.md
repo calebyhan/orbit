@@ -2,7 +2,7 @@
 
 *Last edited: 2025-11-06*
 
-Thank you for your interest in ORBIT (Omni-modal Regime-aware Blend for Index Timing)!
+Thank you for your interest in ORBIT (Observational Reasoning & Behavior-Integrated Trading)!
 
 ---
 

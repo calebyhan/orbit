@@ -1,6 +1,6 @@
 # ORBIT — Dataflow: Prices, News, Social
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Overview
 
@@ -26,9 +26,13 @@ Defines the end‑to‑end dataflow for each modality from **source → ingest �
 
 ### Preprocess
 
-* Align to **America/New_York**; validate trading days via calendar.
+**Price preprocessing is minimal** — no cutoff enforcement needed since EOD prices are naturally point-in-time safe:
+
+* Align to **America/New_York** timezone; validate trading days via calendar.
 * Compute returns: `ret_1d`, `ret_5d`, rolling measures (`rv_10d`, drawdown), ETF–index basis: `ret_spy - ret_spx`.
-* Output table: `data/curated/prices/`.
+* Output table: `data/curated/prices/` (direct pass-through after validation and feature calculation).
+
+**No cutoff filtering:** Unlike text modalities (news/social), price data at market close (4:00 PM ET) is **already** point-in-time safe — T's closing price cannot leak T+1 information. The cutoff discipline (15:30 ET) applies **only** to text data that may contain forward-looking signals if captured too late in the day.
 
 ### Features contribution
 

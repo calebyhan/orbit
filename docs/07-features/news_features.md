@@ -1,6 +1,6 @@
 # ORBIT — News Features (Daily)
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
@@ -18,6 +18,8 @@ From `data/curated/news/` (see 04‑data‑sources & 06‑preprocessing). Requir
 * `sent_max: float` (per‑day max in [−1,1])
 * `source_weighted_mean: float` (optional)
 * `last_item_ts: timestamp[ns, UTC]` (latest `published_at` ≤ 15:30 ET)
+* `ingestion_complete: bool` (True if full day captured without gaps)
+* `ingestion_gaps_minutes: int` (Total minutes of known disconnection)
 
 > All curated values must be computed **only** from items with `published_at ≤ 15:30 ET` on day *T* (point‑in‑time discipline).
 
@@ -36,6 +38,7 @@ All features are later standardized per `standardization_scaling.md`.
 | `news_sent_abs_mean`  | `abs(news_sent_mean)`                                            | [0,1]                            |
 | `news_sent_max`       | copy of curated max sentiment                                    | clamp to [−1,1]                  |
 | `news_recency_min`    | minutes between **cutoff** (15:30 ET) and `last_item_ts` (in ET) | `≥ 0` (0 if no news)             |
+| `news_data_quality`   | `max(0, 1 - ingestion_gaps_minutes/360)`                         | [0,1]; 1.0 if complete, 0.5 if 3h gaps |
 | `gate_news_intensity` | alias of `news_burst`                                            | used by fusion gate              |
 | `gate_news_novelty`   | alias of `news_novelty`                                          | used by fusion gate              |
 
@@ -50,6 +53,44 @@ All features are later standardized per `standardization_scaling.md`.
 
 * If `news_count == 0`: set `news_sent_* = 0`, `news_novelty = 0`, `news_recency_min = 0`, and `news_presence = 0`.
 * Z‑scores (like `news_count_z`) are **NA** during warmup until the 60‑day standardization window is available; do **not** forward‑fill.
+
+## Data Quality Handling
+
+**Purpose:** Handle partial-day data captures from WebSocket outages.
+
+**Data Quality Score:**
+```python
+news_data_quality = max(0, 1 - ingestion_gaps_minutes / 360)
+# 360 minutes = 6 hours (full trading day expectation)
+# Examples:
+#   0 gaps → quality = 1.0 (perfect)
+#   30 min gaps → quality = 0.92 (excellent)
+#   180 min gaps → quality = 0.5 (poor)
+#   360+ min gaps → quality = 0.0 (unusable)
+```
+
+**Handling Rules:**
+
+**If `news_data_quality < 0.5` (>3 hours of gaps):**
+- Treat as missing day
+- Set all news features to 0: `news_count=0`, `news_sent_mean=0`, `news_novelty=0`
+- Set `news_presence=0`
+- Log warning: "News data incomplete for day T (quality={quality})"
+
+**If `0.5 ≤ news_data_quality < 1.0` (some gaps but usable):**
+- Include `news_data_quality` as feature (model can learn reliability patterns)
+- Keep computed features but flag as partial
+- Log info: "News data partially complete for day T (quality={quality})"
+
+**If `news_data_quality == 1.0` (no gaps):**
+- Normal processing
+- `news_data_quality` feature still included for model consistency
+
+**Model Usage:**
+The `news_data_quality` feature allows the model to:
+- Down-weight predictions when data quality is lower
+- Learn that partial-data days are less reliable
+- Distinguish between "genuinely quiet news day" vs "data capture issue"
 
 ## Clipping & caps
 
