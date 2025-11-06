@@ -1,5 +1,5 @@
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 **Purpose:** Guide to navigating the ORBIT documentation tree. Read this first to understand how documentation is organized, then drill into specific modules as needed.
 
@@ -24,6 +24,7 @@ docs/
 ├─ 03-config/
 │  ├─ config_schema.yaml       Canonical keys (paths, tickers, windows, gates)
 │  ├─ sample_config.yaml       Filled example for SPY/VOO
+│  ├─ config_reconciliation.md Relationship & differences between 3 config files
 │  ├─ env_keys.md              API key storage, User‑Agent conventions
 │  └─ cutoffs_timezones.md     Market calendar, ET normalization, cutoff rationale
 ├─ 04-data-sources/
@@ -66,6 +67,8 @@ docs/
 │  └─ acceptance_gates.md      Go/No‑Go bands to promote changes
 ├─ 10-operations/
 │  ├─ runbook.md               One‑command daily run, failure recovery
+│  ├─ monitoring_dashboards.md Grafana/Prometheus configs, alert rules
+│  ├─ troubleshooting_flowchart.md  6 diagnostic flowcharts for common issues
 │  ├─ data_quality_checks.md   Row counts, schema checks, freshness, outliers
 │  ├─ drift_monitoring.md      Feature drift PSI, performance drift alarms
 │  ├─ logging_audit.md         What gets logged, audit trail, sample records
@@ -75,10 +78,14 @@ docs/
 │  ├─ extend_to_single_stocks.md  Cross‑sectional shift: labels, evaluation
 │  └─ future_data_sources.md   Filings, macro, options, short interest
 ├─ 12-schemas/
-│  ├─ prices.parquet.schema.md
-│  ├─ news.parquet.schema.md
-│  ├─ social.parquet.schema.md
-│  └─ features_daily.parquet.schema.md
+│  ├─ prices.parquet.schema.md      Price data schema with validation code
+│  ├─ news.parquet.schema.md        News data schema with access patterns
+│  ├─ social.parquet.schema.md      Social data schema with credibility weighting
+│  └─ features_daily.parquet.schema.md  Feature matrix schema with ML prep examples
+├─ 98-test-plans/
+│  ├─ test_plan_prices_ingestion.md  Unit/integration tests for price ingestion
+│  ├─ test_plan_features.md          Tests for feature computation (price/news/social)
+│  └─ test_plan_modeling.md          Tests for model heads, fusion, training
 └─ 99-templates/
    ├─ TEMPLATE_module_spec.md
    ├─ TEMPLATE_feature_spec.md
@@ -114,19 +121,22 @@ docs/
 
 Every documentation file follows these standards:
 
-* **YAML front-matter:** Every doc begins with title and last_edited date:
+* **Italic date format:** Every doc begins with an italic last edited date:
+  ```markdown
+  *Last edited: YYYY-MM-DD*
+  ```
 
-```yaml
----
-title: <Doc Name>
-last_edited: YYYY-MM-DD
----
-```
+* **Related Files sections:** All docs include cross-references to related documentation:
+  ```markdown
+  ## Related Files
+  
+  * `path/to/related_doc.md` — Description
+  ```
 
-* **Italicized date alternative:** Some older docs use `*Last edited: YYYY-MM-DD*` format
 * **Clear structure:** Explicit sections with purpose, inputs, outputs, procedures
 * **Point-in-time discipline:** Anti-leak constraints and cutoffs clearly stated
 * **Acceptance criteria:** Each spec includes verifiable checks
+* **Executable examples:** Schema files include validation code, test plans include pytest code
 
 ---
 
@@ -141,6 +151,7 @@ last_edited: YYYY-MM-DD
 | **System architecture** | `02-architecture/system_diagram.md` |
 | **Pipeline dataflow** | `02-architecture/dataflow.md` |
 | **Config schema** | `03-config/config_schema.yaml` |
+| **Config reconciliation** | `03-config/config_reconciliation.md` |
 | **API rate limits** | `04-data-sources/rate_limits.md` |
 | **Daily job scheduler** | `05-ingestion/scheduler_jobs.md` |
 | **Cutoff rules** | `06-preprocessing/time_alignment_cutoffs.md` |
@@ -149,8 +160,11 @@ last_edited: YYYY-MM-DD
 | **Evaluation metrics** | `09-evaluation/metrics_definitions.md` |
 | **Backtest specification** | `09-evaluation/backtest_long_flat_spec.md` |
 | **Operations runbook** | `10-operations/runbook.md` |
+| **Monitoring & alerts** | `10-operations/monitoring_dashboards.md` |
+| **Troubleshooting** | `10-operations/troubleshooting_flowchart.md` |
 | **Roadmap & milestones** | `11-roadmap/milestones.md` |
 | **Data schemas** | `12-schemas/*.md` |
+| **Test plans** | `98-test-plans/*.md` |
 | **Templates** | `99-templates/*.md` |
 
 ---
@@ -161,6 +175,10 @@ last_edited: YYYY-MM-DD
 
 ## Related Files
 
-* `01-overview/project_scope.md` — Project overview
-* `02-architecture/system_diagram.md` — System architecture
+* `01-overview/project_scope.md` — Project overview and scope
+* `02-architecture/system_diagram.md` — System architecture with Mermaid flowchart
+* `03-config/config_reconciliation.md` — Configuration file relationships
+* `10-operations/monitoring_dashboards.md` — Monitoring and alerting setup
+* `10-operations/troubleshooting_flowchart.md` — Diagnostic flowcharts
+* `98-test-plans/*.md` — Test plan suite (3 files)
 * `99-templates/*.md` — Documentation templates
