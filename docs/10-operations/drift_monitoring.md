@@ -137,8 +137,8 @@ where:
 
 **Interpretation:**
 - PSI < 0.10: **No significant shift**
-- 0.10 ≤ PSI < 0.25: **Moderate shift** (monitor)
-- PSI ≥ 0.25: **Large shift** (investigate + consider retrain)
+- $0.10 \leq \text{PSI} < 0.25$: **Moderate shift** (monitor)
+- $\text{PSI} \geq 0.25$: **Large shift** (investigate + consider retrain)
 
 ---
 

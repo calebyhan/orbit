@@ -28,7 +28,7 @@ Per day *T* (already point‑in‑time safe):
 
 ## Formulation (classification)
 
-Let base weights $w = (w_p, w_n, w_s)$ with $w_k ≥ 0, \sum w_k = 1$.
+Let base weights $w = (w_p, w_n, w_s)$ with $w_k \geq 0, \sum w_k = 1$.
 
 Define **gate activations** (0..1) via a sigmoid over linear terms:
 
@@ -89,7 +89,7 @@ Replace probabilities with expected returns and minimize squared error on `label
 
   1. Freeze head models; compute head scores on train/val.
   2. Optimize $w, \alpha, \beta$ on **validation** via small gradient‑based optimizer or grid search.
-  3. Enforce constraints: $w_k ≥ 0$, sum to 1; $\beta_* ≥ 0$; regularize $|\alpha|_2$ to avoid over‑reactive gates.
+  3. Enforce constraints: $w_k \geq 0$, sum to 1; $\beta_* \geq 0$; regularize $|\alpha|_2$ to avoid over‑reactive gates.
 * **Initialization:** from config `fusion.weights_init` (e.g., `w_p=0.6, w_n=0.2, w_s=0.2`); $\alpha=0, \beta=1$.
 
 ### Regularization & stability
@@ -124,8 +124,6 @@ w_bar = {k: v/sum_w for k,v in w_tilde.items()}
 # fused score
 p_fuse = w_bar['p']*p_price + w_bar['n']*p_news + w_bar['s']*p_social
 ```
-p_fuse = w_bar['p']*p_price + w_bar['n']*p_news + w_bar['s']*p_social
-```
 
 ---
 
@@ -139,7 +137,7 @@ p_fuse = w_bar['p']*p_price + w_bar['n']*p_news + w_bar['s']*p_social
 
 ## Diagnostics
 
-* Log **effective weights** (\bar{w}_k) time series and correlations with gate inputs.
+* Log **effective weights** $\bar{w}_k$ time series and correlations with gate inputs.
 * Report **lift** vs simple equal‑weight average on validation.
 
 ## Anti‑leak & constraints
