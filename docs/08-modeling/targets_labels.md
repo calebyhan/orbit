@@ -35,8 +35,8 @@ The choice of **ETF** for training is `SPY.US`; we validate on `VOO.US` for outâ
 
 The label horizon and price points must match the backtest execution rule (`backtest.execution.trade_at`):
 
-* `next_open`: $P_t = \text{Close}_t, P_{t+1} = \text{Open}_{t+1}$
-* `next_close`: $P_t = \text{Close}_t, P_{t+1} = \text{Close}_{t+1}$
+* `next_open`: $P_t = \mathrm{Close}_t$, $P_{t+1} = \mathrm{Open}_{t+1}$
+* `next_close`: $P_t = \mathrm{Close}_t$, $P_{t+1} = \mathrm{Close}_{t+1}$
 
 > ORBIT defaults to **next_open** to avoid using any information from day *t+1* intraday text; only prices are used.
 
