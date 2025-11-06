@@ -33,22 +33,22 @@ Let base weights $w = (w_p, w_n, w_s)$ with $w_k \geq 0, \sum w_k = 1$.
 Define **gate activations** (0..1) via a sigmoid over linear terms:
 
 $$
-g_n = \sigma(\alpha_{n0} + \alpha_{n1} \cdot \text{gate\_news\_intensity} + \alpha_{n2} \cdot \text{gate\_news\_novelty})
+g_n = \sigma(\alpha_{n0} + \alpha_{n1} \cdot \text{gate news intensity} + \alpha_{n2} \cdot \text{gate news novelty})
 $$
 
 $$
-g_s = \sigma(\alpha_{s0} + \alpha_{s1} \cdot \text{gate\_soc\_intensity} + \alpha_{s2} \cdot \text{gate\_soc\_novelty})
+g_s = \sigma(\alpha_{s0} + \alpha_{s1} \cdot \text{gate soc intensity} + \alpha_{s2} \cdot \text{gate soc novelty})
 $$
 
 **Data Quality Adjustment:**
 Multiply gate activations by respective data quality scores to down-weight unreliable partial-day captures:
 
 $$
-g_n^{adjusted} = g_n \cdot \text{news\_data\_quality}
+g_n^{adjusted} = g_n \cdot \text{news data quality}
 $$
 
 $$
-g_s^{adjusted} = g_s \cdot \text{soc\_data\_quality}
+g_s^{adjusted} = g_s \cdot \text{soc data quality}
 $$
 
 On days with `data_quality < 0.5`, the corresponding text modality effectively gets zero gate boost. This allows the price head to dominate when text data is unreliable.
