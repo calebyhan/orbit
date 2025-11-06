@@ -55,11 +55,20 @@ Emit one curated table per day at `data/curated/news/` with columns used by feat
 * `count: int` — #unique news items by cutoff
 * `count_z: float` — z-score vs 60-day history
 * `novelty: float` — average cosine distance from prior 7d headlines (see `06-preprocessing/deduplication_novelty.md`)
-* `sent_mean: float` — average headline sentiment (VADER/FinBERT)
-* `sent_max: float`
-* `source_weighted_mean: float` — weighted by source reliability table
+* `sent_mean: float` — average headline sentiment (Gemini API)
+* `sent_max: float` — maximum sentiment score
+* `sent_weighted: float` — weighted by source reliability table
+* `stance_bull_pct: float` — % of items with bull stance
+* `stance_bear_pct: float` — % of items with bear stance
+* `certainty_mean: float` — average certainty score
 * `last_item_ts: timestamp[ns, UTC]` — latest `published_at` counted
 * `run_id: str`
+
+**Sentiment processing:**
+- All news items processed via **Gemini 2.0 Flash-Lite** batch API
+- Output: `sent_llm` in [-1, 1], `stance`, `certainty`
+- Batch processing for cost efficiency (~30 items/day = 1-2 API calls)
+- See `gemini_sentiment_api.md` for prompt/response schema
 
 ## Errors & retries
 

@@ -1,28 +1,56 @@
-# ORBIT — Gemini Sentiment API (Optional Escalation)
+# ORBIT — Gemini Sentiment API
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-06*
 
 ## Purpose
 
-Define a **compact, batched** LLM scoring pathway for social/news text when local classifiers (VADER/FinBERT) are **uncertain** or **high‑impact**. This doc standardizes prompt/response schemas, batching, escalation criteria, and fallbacks.
+Define the **primary sentiment analysis pathway** using Google's Gemini 2.0 Flash-Lite API for all news and social media text. This doc standardizes prompt/response schemas, batching, multi-key rotation, and fallbacks.
 
-## When to use (escalation rules)
+## Model selection
 
-Escalate only when ALL are true:
+**Primary model:** Gemini 2.0 Flash-Lite
+- **Free tier limits:** 30 RPM, 1M TPM, 200 RPD per API key
+- **Cost (if upgraded):** ~$0.075 per 1M tokens
+- **Performance:** Excellent financial domain understanding, JSON structured output
+- **Latency:** Batch processing completes in <1 minute for typical daily volume
 
-* Source enabled in config (`sources.gemini.enabled: true`).
-* Item meets at least one trigger:
+## Multi-key rotation (optional)
 
-  * `|sent_vader| < vader_abs_lt` (config)
-  * `disagreement == true` between VADER and FinBERT
-  * `buzz_z > buzz_z_gt` for the day (high‑impact window)
-* Token budget allows batch within configured limits.
+Support up to **5 API keys** (expandable if needed) for increased throughput:
 
-## Request batching
+**Benefits:**
+- Combined quota: 5 keys × 200 RPD = **1,000 requests/day**
+- Automatic failover if one key exhausted
+- Round-robin or least-used distribution strategy
+
+**Configuration:**
+```yaml
+sources:
+  gemini:
+    enabled: true
+    model: "gemini-2.0-flash-lite"
+    api_keys:
+      - GEMINI_API_KEY_1
+      - GEMINI_API_KEY_2
+      - GEMINI_API_KEY_3
+      - GEMINI_API_KEY_4
+      - GEMINI_API_KEY_5
+    rotation_strategy: "round_robin"  # or "least_used"
+    batch_size: 200
+```
+
+**Key manager behavior:**
+- Track daily usage per key
+- Rotate to next key when current approaches quota (e.g., 190/200)
+- Log key switches for audit trail
+- Reset counters at midnight Pacific time (when RPD resets)
+
+## Batch processing
 
 * Group **N items per call** (`sources.gemini.batch_size`, default 200).
 * Build **JSONL** payload (one object per line) with minimal fields.
 * Track **attempt_no** and **run_id** for idempotency.
+* All items processed in single daily batch (typical: 50-80 items/day).
 
 ## Input schema (per item)
 
@@ -72,8 +100,9 @@ Escalate only when ALL are true:
 ## Post‑processing rules
 
 * Clamp `sent_llm` to [-1,1], `certainty` and `toxicity` to [0,1].
-* Prefer `sent_llm` over local scores **only for escalated items**; otherwise keep tier‑1 values.
-* Compute **credibility‑weighted** aggregates with the same caps used for local sentiment.
+* Use `sent_llm` as the primary sentiment score for all items.
+* Compute **credibility‑weighted** aggregates (e.g., karma-weighted for social).
+* On API failure: retry with backoff; if all retries fail, mark item with `sent_llm=0, certainty=0` and log to rejects.
 
 ## Privacy & compliance
 
@@ -83,10 +112,12 @@ Escalate only when ALL are true:
 
 ## QC & acceptance checks
 
-* Batch calls do not exceed configured **batch_size** and **rate limits**.
+* Batch calls respect configured **batch_size** and per-key **rate limits**.
+* Multi-key rotation distributes load evenly; no single key exceeds quota.
 * Response lines **1:1** with request lines by matching `id`.
-* All fields obey domains; missing responses are logged and defaulted to local sentiment.
+* All fields obey domains; missing responses are logged and defaulted to neutral (sent=0).
 * Aggregates recompute without NaN propagation.
+* Daily token usage logged for cost tracking (even on free tier).
 
 ---
 

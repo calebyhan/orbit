@@ -64,9 +64,17 @@ Persist to `data/raw/social/` as Parquet (partitioned by `date=YYYY-MM-DD`). For
 
 ## Sentiment pathway
 
-1. **Tier‑1 (cheap):** VADER / FinBERT on `title + body` → `sent_vader`, `sent_finbert` in [−1,1].
-2. **Uncertain cases:** flag when `|sent_vader| < τ` or classifiers disagree.
-3. **LLM escalation (optional):** batch these rows to Gemini; store `sent_llm`, `stance`, `sarcasm`, `certainty` (see `gemini_sentiment_api.md`).
+**Gemini API (Batch Processing):**
+- All posts processed via **Gemini 2.0 Flash-Lite** batch API
+- Output: `sent_llm` in [-1, 1], `stance` (bull/bear/neutral), `sarcasm` (bool), `certainty` [0,1]
+- Batch size: ~100-200 items per call for efficiency
+- See `gemini_sentiment_api.md` for detailed prompt/response schema
+
+**Multi-key rotation (optional):**
+- Support up to **5 API keys** for increased throughput (200 RPD × 5 = 1,000 RPD)
+- Round-robin or least-used rotation strategy
+- Automatic fallback if key quota exhausted
+- See `03-config/env_keys.md` for configuration
 
 ## Curated daily aggregates
 
@@ -76,8 +84,12 @@ Emit `data/curated/social/` per day with:
 * `post_count: int`
 * `post_count_z: float` (vs 60‑day)
 * `comment_velocity: float` (comments/hour near cutoff)
-* `cred_weighted_sent: float` (sentiment weighted by log‑karma, capped)
-* `sarcasm_rate: float` (LLM only)
+* `sent_mean: float` (average sentiment from Gemini)
+* `sent_weighted: float` (sentiment weighted by log‑karma, capped)
+* `stance_bull_pct: float` (% of posts with bull stance)
+* `stance_bear_pct: float` (% of posts with bear stance)
+* `sarcasm_rate: float` (% of posts flagged as sarcastic)
+* `certainty_mean: float` (average certainty score)
 * `novelty: float` (vs prior 7d n‑grams)
 * `last_item_ts: timestamp[ns, UTC]`
 * `run_id: str`
@@ -97,7 +109,8 @@ Emit `data/curated/social/` per day with:
 
 * Can fetch, normalize, and store posts within quota and cutoff.
 * Produces curated daily aggregates with the fields above.
-* Integrates with optional LLM escalation and emits sentiment fields consistently.
+* Integrates with Gemini batch API and emits sentiment fields consistently.
+* Multi-key rotation (if enabled) distributes load across available API keys.
 
 ---
 

@@ -28,13 +28,35 @@ export ALPACA_API_KEY_ID=... ALPACA_API_SECRET_KEY=...
 * Prefer installed‑app OAuth with device or web flow. Use script creds only if required and within Reddit TOS.
 * Throttle to avoid 429s. Respect subreddit rules.
 
-## Gemini (optional LLM escalation)
+## Gemini (sentiment analysis)
 
-* `GEMINI_API_KEY`
+**Primary API key:**
+* `GEMINI_API_KEY_1`
 
-**Usage**
+**Additional keys (optional, for multi-key rotation):**
+* `GEMINI_API_KEY_2`
+* `GEMINI_API_KEY_3`
+* `GEMINI_API_KEY_4`
+* `GEMINI_API_KEY_5`
 
-* Only required if `sources.gemini.enabled: true` in config.
+**Usage:**
+* Required for all sentiment analysis (news + social).
+* Multi-key rotation enables higher throughput: up to 5 keys = 1,000 RPD (200 × 5).
+* Configure rotation strategy in `orbit.yaml`: `sources.gemini.rotation_strategy: "round_robin"` or `"least_used"`.
+* If only 1 key provided, system operates with single-key quota (200 RPD on free tier).
+
+**Free tier limits (per key):**
+* Model: Gemini 2.0 Flash-Lite
+* 30 RPM, 1M TPM, 200 RPD
+* Typical usage: ~50-80 items/day = 1-2 batch requests
+
+**Export examples:**
+```bash
+export GEMINI_API_KEY_1="AIza..."
+export GEMINI_API_KEY_2="AIza..."
+export GEMINI_API_KEY_3="AIza..."
+# Keys 4-5 optional
+```
 
 ## General
 
