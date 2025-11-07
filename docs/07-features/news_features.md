@@ -14,7 +14,7 @@ From `data/curated/news/` (see 04‑data‑sources & 06‑preprocessing). Requir
 * `count: int`
 * `count_z: float` (vs 60‑day history)
 * `novelty: float` (mean ∈ [0,1])
-* `sent_mean: float` (VADER/FinBERT mean in [−1,1])
+* `sent_mean: float` (Gemini mean in [−1,1])
 * `sent_max: float` (per‑day max in [−1,1])
 * `source_weighted_mean: float` (optional)
 * `last_item_ts: timestamp[ns, UTC]` (latest `published_at` ≤ 15:30 ET)

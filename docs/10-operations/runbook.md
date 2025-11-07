@@ -276,11 +276,11 @@ ERROR: Gemini batch request timed out after 120s
 # Reduce batch size
 python -m orbit.ingest.social --config orbit.yaml --date today --gemini-batch-size 50
 
-# Or skip Gemini, use VADER/FinBERT only
+# Or skip Gemini, use heuristic fallback scoring
 python -m orbit.ingest.social --config orbit.yaml --date today --skip-llm
 ```
 
-**Action:** VADER/FinBERT pre-scores are sufficient for most days.
+**Action:** Heuristic pre-scores or a very fast Gemini‑lite pass are sufficient for most days.
 
 ---
 

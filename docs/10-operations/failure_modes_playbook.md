@@ -235,7 +235,7 @@ python -m orbit.ingest.social --config orbit.yaml --date today --rate-limit 50  
 # Skip social for today; use Price+News model
 python -m orbit.trade.signal --config orbit.yaml --date today --fallback price_news_only
 
-# Or use VADER/FinBERT only (skip Gemini escalation)
+# Or skip Gemini escalation (use heuristic fallback scoring)
 python -m orbit.ingest.social --config orbit.yaml --date today --skip-llm
 ```
 
@@ -256,7 +256,7 @@ python -m orbit.ingest.social --config orbit.yaml --date today --skip-llm
 
 ```
 ERROR: Gemini batch request timed out after 120s
-WARNING: Only 45% of posts scored with LLM (rest using VADER fallback)
+WARNING: Only 45% of posts scored with LLM (rest using heuristic fallback)
 ```
 
 ### Root Causes
@@ -299,7 +299,7 @@ python -m orbit.ingest.social --config orbit.yaml --date today --gemini-timeout 
 # Check quota status
 python -m orbit.ingest.social --config orbit.yaml --mode check_quota
 
-# If over limit, skip Gemini; use VADER/FinBERT only
+# If over limit, skip Gemini; use heuristic fallback scoring
 python -m orbit.ingest.social --config orbit.yaml --date today --skip-llm
 ```
 
@@ -318,7 +318,7 @@ python -m orbit.trade.signal --config orbit.yaml --date today --fallback price_n
 
 * Keep batch size ≤50 posts (conservative)
 * Monitor Gemini quota daily
-* Pre-filter aggressively with VADER (only escalate ambiguous posts)
+* Pre-filter aggressively with heuristics or a very fast Gemini‑lite pass (only escalate ambiguous posts)
 * Cache Gemini scores for common posts (dedupe)
 
 ---

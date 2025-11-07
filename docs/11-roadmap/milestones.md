@@ -47,7 +47,7 @@ Define the **phased development roadmap** from M0 (price-only baseline) to M3 (p
 
 * [ ] **Ingestion:** Alpaca news WS client (persistent daemon)
 * [ ] **Preprocessing:** Dedupe, time alignment (15:30 ET cutoff), source weighting
-* [ ] **Features:** news_count_z, sentiment (VADER/FinBERT), novelty, source_weighted_sentiment
+* [ ] **Features:** news_count_z, sentiment (Gemini), novelty, source_weighted_sentiment
 * [ ] **Model:** News head + gated fusion (news gate based on news_count_z, novelty)
 * [ ] **Ablations:** Price-only vs Price+News comparison
 * [ ] **Backtest:** Long/flat with full ablations
@@ -79,7 +79,7 @@ Define the **phased development roadmap** from M0 (price-only baseline) to M3 (p
 
 * [ ] **Ingestion:** Reddit API puller (OAuth, rate-limited)
 * [ ] **Preprocessing:** Bot filtering, quality checks, dedupe
-* [ ] **Sentiment:** VADER/FinBERT pre-filter + Gemini Flash-Lite batch escalation (top ~20%)
+* [ ] **Sentiment:** Gemini-only pipeline (fast/light scoring pre-filter + Flash-Lite batch escalation for highest-impact posts, top ~20%)
 * [ ] **Features:** post_count_z, comment_velocity, cred_weighted_sentiment, social_novelty, sarcasm_rate
 * [ ] **Model:** Social head + gated fusion (social gate based on post_count_z, novelty)
 * [ ] **Ablations:** Price-only vs Price+Social vs Price+News+Social (4-way)

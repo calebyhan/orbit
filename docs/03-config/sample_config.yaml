@@ -47,7 +47,7 @@ enabled: false
 model: "gemini-2.5-flash-lite"
 batch_size: 200
 escalate_thresholds:
-vader_abs_lt: 0.2
+gemini_abs_lt: 0.2
 disagreement: true
 buzz_z_gt: 2.0
 rate_limits: { rpm: 15, tpm: 250000, rpd: 1000 }
@@ -66,7 +66,7 @@ price:
 windows: { mom_5: 5, mom_20: 20, rv_10: 10, drawdown_lookback: 252 }
 news:
 zscore_window_days: 60
-sentiment_model: "vader"
+sentiment_model: "gemini"
 social:
 zscore_window_days: 60
 credibility_cap: 10000

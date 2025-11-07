@@ -22,8 +22,6 @@
 | `upvote_ratio` | `float64` | Yes | Upvote ratio (0 to 1) |
 | `num_comments` | `int64` | No | Number of comments |
 | `symbols` | `list<string>` | Yes | Mapped symbols (["SPY", "VOO"]) |
-| `sentiment_vader` | `float64` | Yes | VADER compound score (-1 to +1) |
-| `sentiment_finbert` | `float64` | Yes | FinBERT score (-1 to +1) |
 | `sentiment_gemini` | `float64` | Yes | Gemini score (-1 to +1, if escalated) |
 | `sarcasm_flag` | `bool` | Yes | Gemini sarcasm detection |
 | `novelty_score` | `float64` | Yes | Dissimilarity to prior 7d (0 to 1) |
@@ -49,9 +47,7 @@
   "upvote_ratio": 0.87,
   "num_comments": 42,
   "symbols": ["SPY"],
-  "sentiment_vader": 0.62,
-  "sentiment_finbert": 0.45,
-  "sentiment_gemini": 0.58,
+    "sentiment_gemini": 0.58,
   "sarcasm_flag": false,
   "novelty_score": 0.34,
   "content_hash": "sha256:def456...",
@@ -138,7 +134,7 @@ def validate_social(file_path):
         errors.append("Negative karma detected")
     
     # Sentiment bounds
-    for col in ['sentiment_vader', 'sentiment_finbert', 'sentiment_gemini']:
+    for col in ['sentiment_gemini']:
         if col in df.columns:
             valid = df[col].dropna().between(-1, 1).all()
             if not valid:
@@ -178,8 +174,11 @@ df_cred = df[
 df['karma_capped'] = df['author_karma'].clip(upper=10000)
 df['weight'] = np.log1p(df['karma_capped'])
 
-# Weighted sentiment
-weighted_sent = (df['sentiment_vader'] * df['weight']).sum() / df['weight'].sum()
+# Weighted sentiment (use Gemini when available)
+if 'sentiment_gemini' in df.columns:
+    weighted_sent = (df['sentiment_gemini'] * df['weight']).sum() / df['weight'].sum()
+else:
+    weighted_sent = np.nan
 ```
 
 ### Detect Sarcasm Rate
@@ -197,7 +196,7 @@ print(f"Sarcasm rate: {sarcasm_rate:.2%}")
 # Subreddit breakdowns
 subreddit_agg = df.groupby('subreddit').agg({
     'id': 'count',
-    'sentiment_vader': 'mean',
+    'sentiment_gemini': 'mean',
     'upvote_ratio': 'mean',
     'num_comments': 'sum'
 }).rename(columns={'id': 'post_count'})

@@ -6,6 +6,8 @@
 
 Defines the end‑to‑end dataflow for each modality from **source → ingest → preprocess → curated → features** and the time rules that guarantee point‑in‑time correctness.
 
+This repository assumes a central, shared Parquet data lake (under `data/`) hosted on a central Ubuntu host. Developers and agents work in per-user userspaces (a personal workspace on the same host) and access the shared data lake from there. Access to the host is via a secure Tailscale connection to the Ubuntu machine.
+
 ---
 
 ## 1) Prices (Stooq)
@@ -60,7 +62,7 @@ Defines the end‑to‑end dataflow for each modality from **source → ingest �
 * **Cutoff:** include only items with `published_at ≤ 15:30 ET` on day T.
 * **Lag rule (training):** optional +15–30 min publish lag window.
 * **Dedup/novelty:** cluster near‑duplicates; compute novelty vs prior 7 days.
-* **Sentiment:** VADER/FinBERT on `headline` (store `sent_mean`, `sent_max`).
+* **Sentiment:** Gemini (fast/light scoring) on `headline` (store `sent_mean`, `sent_max`).
 * Output table: `data/curated/news/` with: `date, count, count_z, novelty, sent_mean, sent_max, source_weighted_mean`.
 
 ### Features contribution
@@ -87,7 +89,7 @@ Defines the end‑to‑end dataflow for each modality from **source → ingest �
 ### Preprocess
 
 * **Cutoff:** include only posts with `created_utc ≤ 15:30 ET` on day T.
-* **Sentiment tier‑1:** VADER/FinBERT for cheap scores; label **uncertain** cases (|score| < τ or classifier disagreement).
+* **Sentiment tier‑1:** Gemini (fast/light scores) for initial, cheap scoring; label **uncertain** cases (|score| < τ or model uncertainty).
 * **LLM escalation (optional):** batch only uncertain/high‑impact posts to Gemini; store JSON response (`sent_llm [-1..1]`, `stance {bull,bear,neutral}`, `sarcasm bool`, `certainty [0..1]`).
 * **Aggregate:** counts, `post_count_z` vs 60‑day, `comment_velocity`, credibility‑weighted sentiment.
 * Output table: `data/curated/social/` with daily aggregates.

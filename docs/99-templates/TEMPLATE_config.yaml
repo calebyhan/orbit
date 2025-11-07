@@ -86,8 +86,6 @@ features:
     aggregation_window: 1
     count_z_window: 60
     sentiment_methods:
-      - vader
-      - finbert
       - gemini
     novelty_window: 7
     burst_threshold: 2.0
@@ -96,8 +94,6 @@ features:
     aggregation_window: 1
     count_z_window: 60
     sentiment_methods:
-      - vader
-      - finbert
       - gemini
     novelty_window: 7
     credibility_weight_by_karma: true

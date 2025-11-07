@@ -18,8 +18,6 @@
 | `source` | `string` | No | News source (e.g., "Reuters", "Bloomberg") |
 | `url` | `string` | Yes | Article URL |
 | `symbols` | `list<string>` | Yes | Mapped symbols (["SPY", "VOO"]) |
-| `sentiment_vader` | `float64` | Yes | VADER compound score (-1 to +1) |
-| `sentiment_finbert` | `float64` | Yes | FinBERT score (-1 to +1) |
 | `sentiment_gemini` | `float64` | Yes | Gemini score (-1 to +1, if escalated) |
 | `novelty_score` | `float64` | Yes | Dissimilarity to prior 7d (0 to 1) |
 | `content_hash` | `string` | No | Hash for deduplication |
@@ -40,9 +38,7 @@
   "source": "Reuters",
   "url": "https://reuters.com/...",
   "symbols": ["SPY", "VOO"],
-  "sentiment_vader": 0.12,
-  "sentiment_finbert": 0.08,
-  "sentiment_gemini": null,
+    "sentiment_gemini": null,
   "novelty_score": 0.87,
   "content_hash": "sha256:abc123...",
   "ingestion_ts": "2024-11-05T15:30:02-05:00",
@@ -124,7 +120,7 @@ def validate_news(file_path):
     errors = []
     
     # Sentiment bounds
-    for col in ['sentiment_vader', 'sentiment_finbert', 'sentiment_gemini']:
+    for col in ['sentiment_gemini']:
         if col in df.columns:
             valid = df[col].dropna().between(-1, 1).all()
             if not valid:
@@ -169,8 +165,7 @@ df = pd.read_parquet(
 
 # Daily sentiment average
 daily = df.groupby(df['published_at'].dt.date).agg({
-    'sentiment_vader': 'mean',
-    'sentiment_finbert': 'mean',
+    'sentiment_gemini': 'mean',
     'novelty_score': 'mean',
     'id': 'count'
 }).rename(columns={'id': 'news_count'})

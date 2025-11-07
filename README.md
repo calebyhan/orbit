@@ -7,7 +7,7 @@ ORBIT (Observational Reasoning & Behavior-Integrated Trading) is a free‑first,
 
 * **Prices:** Stooq OHLCV for `SPY.US`, `VOO.US`, and `^SPX`
 * **News:** Alpaca Market Data **news WebSocket** (≤30 symbols on free tier)
-* **Social:** Reddit API (r/stocks, r/investing, r/wallstreetbets) with VADER/FinBERT pre‑scores and optional Gemini batch escalation
+* **Social:** Reddit API (r/stocks, r/investing, r/wallstreetbets) with Gemini AI sentiment scoring.
 
 **Why index‑first?**
 One symbol, fewer mapping errors, fast iteration. Text impact is **gated** so it weighs more only on news/social burst days.

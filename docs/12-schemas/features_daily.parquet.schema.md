@@ -49,9 +49,7 @@
 | `news_sentiment_std` | `float64` | Yes | Sentiment volatility |
 | `news_novelty_mean` | `float64` | Yes | Mean novelty score |
 | `news_source_weight` | `float64` | Yes | Source-quality-weighted count |
-| `news_finbert_mean` | `float64` | Yes | FinBERT sentiment mean |
 | `news_gemini_mean` | `float64` | Yes | Gemini sentiment mean (if escalated) |
-| `news_vader_mean` | `float64` | Yes | VADER sentiment mean |
 | `news_event_earnings` | `bool` | Yes | Keyword: "earnings" mentioned |
 | `news_event_fed` | `bool` | Yes | Keyword: "Fed" / "FOMC" mentioned |
 | `news_event_macro` | `bool` | Yes | Keyword: "GDP" / "CPI" / "jobs" |
@@ -69,9 +67,7 @@
 | `social_sentiment_min` | `float64` | Yes | Max negative sentiment |
 | `social_novelty_mean` | `float64` | Yes | Mean novelty score |
 | `social_cred_weighted_sent` | `float64` | Yes | Karma-weighted sentiment |
-| `social_finbert_mean` | `float64` | Yes | FinBERT sentiment mean |
 | `social_gemini_mean` | `float64` | Yes | Gemini sentiment mean |
-| `social_vader_mean` | `float64` | Yes | VADER sentiment mean |
 | `sarcasm_rate` | `float64` | Yes | % posts flagged as sarcastic |
 | `social_burst_flag` | `bool` | Yes | post_count_z > 2.0 |
 | `wsb_sentiment` | `float64` | Yes | r/wallstreetbets specific sentiment |

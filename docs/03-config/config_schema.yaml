@@ -51,8 +51,8 @@ enabled: false                 # set true to use escalation LLM
 model: "gemini-2.5-flash-lite"
 batch_size: 200
 escalate_thresholds:
-vader_abs_lt: 0.2            # escalate when |VADER| < 0.2
-disagreement: true           # escalate when VADER vs FinBERT disagree
+gemini_abs_lt: 0.2            # escalate when |sentiment| < 0.2 (use Gemini for scoring)
+disagreement: false           # retained for backward compatibility; use model uncertainty instead
 buzz_z_gt: 2.0               # escalate when buzz is high
 rate_limits: { rpm: 15, tpm: 250000, rpd: 1000 }
 
@@ -69,8 +69,8 @@ features:
 price:
 windows: { mom_5: 5, mom_20: 20, rv_10: 10, drawdown_lookback: 252 }
 news:
-zscore_window_days: 60
-sentiment_model: "vader"       # or finbert
+	zscore_window_days: 60
+	sentiment_model: "gemini"
 social:
 zscore_window_days: 60
 credibility_cap: 10000
