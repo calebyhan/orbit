@@ -65,7 +65,7 @@ Persist to `data/raw/social/` as Parquet (partitioned by `date=YYYY-MM-DD`). For
 ## Sentiment pathway
 
 **Gemini API (Batch Processing):**
-- All posts processed via **Gemini 2.0 Flash-Lite** batch API
+- All posts processed via **Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite)** batch API
 - Output: `sent_llm` in [-1, 1], `stance` (bull/bear/neutral), `sarcasm` (bool), `certainty` [0,1]
 - Batch size: ~100-200 items per call for efficiency
 - See `gemini_sentiment_api.md` for detailed prompt/response schema

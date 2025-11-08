@@ -64,8 +64,8 @@ Emit one curated table per day at `data/curated/news/` with columns used by feat
 * `last_item_ts: timestamp[ns, UTC]` — latest `published_at` counted
 * `run_id: str`
 
-**Sentiment processing:**
-- All news items processed via **Gemini 2.0 Flash-Lite** batch API
+-**Sentiment processing:**
+- All news items processed via **Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite)** batch API
 - Output: `sent_llm` in [-1, 1], `stance`, `certainty`
 - Batch processing for cost efficiency (~30 items/day = 1-2 API calls)
 - See `gemini_sentiment_api.md` for prompt/response schema

@@ -6,7 +6,7 @@
 
 **File format:** JSONL (one JSON object per line)  
 **API:** Google Gemini Batch API  
-**Model:** `gemini-1.5-flash` (free tier)
+**Model:** `gemini-2.5-flash-lite` (free tier)
 
 ---
 
@@ -18,7 +18,7 @@ Each line is a JSON object with:
 {
   "custom_id": "unique_identifier_string",
   "method": "POST",
-  "url": "/v1/models/gemini-1.5-flash:generateContent",
+  "url": "/v1/models/gemini-2.5-flash-lite:generateContent",
   "body": {
     "contents": [
       {
@@ -51,8 +51,8 @@ Each line is a JSON object with:
 ## Example: News Sentiment Escalation
 
 ```jsonl
-{"custom_id":"news_12345","method":"POST","url":"/v1/models/gemini-1.5-flash:generateContent","body":{"contents":[{"parts":[{"text":"Analyze this financial news headline for sentiment (-1 negative to +1 positive):\n\nHeadline: Fed Holds Rates Steady Amid Inflation Concerns\nSummary: The Federal Reserve kept interest rates unchanged at its latest meeting...\n\nReturn JSON: {\"sentiment\": <float>, \"confidence\": <float 0-1>}"}]}],"generationConfig":{"temperature":0.0,"maxOutputTokens":50,"responseMimeType":"application/json","responseSchema":{"type":"object","properties":{"sentiment":{"type":"number"},"confidence":{"type":"number"}},"required":["sentiment","confidence"]}}}}
-{"custom_id":"news_12346","method":"POST","url":"/v1/models/gemini-1.5-flash:generateContent","body":{"contents":[{"parts":[{"text":"Analyze this financial news headline for sentiment (-1 negative to +1 positive):\n\nHeadline: Tech Stocks Surge on Strong Earnings\nSummary: Major tech companies reported better-than-expected quarterly results...\n\nReturn JSON: {\"sentiment\": <float>, \"confidence\": <float 0-1>}"}]}],"generationConfig":{"temperature":0.0,"maxOutputTokens":50,"responseMimeType":"application/json","responseSchema":{"type":"object","properties":{"sentiment":{"type":"number"},"confidence":{"type":"number"}},"required":["sentiment","confidence"]}}}}
+{"custom_id":"news_12345","method":"POST","url":"/v1/models/gemini-2.5-flash-lite:generateContent","body":{"contents":[{"parts":[{"text":"Analyze this financial news headline for sentiment (-1 negative to +1 positive):\n\nHeadline: Fed Holds Rates Steady Amid Inflation Concerns\nSummary: The Federal Reserve kept interest rates unchanged at its latest meeting...\n\nReturn JSON: {\"sentiment\": <float>, \"confidence\": <float 0-1>}"}]}],"generationConfig":{"temperature":0.0,"maxOutputTokens":50,"responseMimeType":"application/json","responseSchema":{"type":"object","properties":{"sentiment":{"type":"number"},"confidence":{"type":"number"}},"required":["sentiment","confidence"]}}}}
+{"custom_id":"news_12346","method":"POST","url":"/v1/models/gemini-2.5-flash-lite:generateContent","body":{"contents":[{"parts":[{"text":"Analyze this financial news headline for sentiment (-1 negative to +1 positive):\n\nHeadline: Tech Stocks Surge on Strong Earnings\nSummary: Major tech companies reported better-than-expected quarterly results...\n\nReturn JSON: {\"sentiment\": <float>, \"confidence\": <float 0-1>}"}]}],"generationConfig":{"temperature":0.0,"maxOutputTokens":50,"responseMimeType":"application/json","responseSchema":{"type":"object","properties":{"sentiment":{"type":"number"},"confidence":{"type":"number"}},"required":["sentiment","confidence"]}}}}
 ```
 
 ---
@@ -60,7 +60,7 @@ Each line is a JSON object with:
 ## Example: Reddit Sarcasm Detection
 
 ```jsonl
-{"custom_id":"social_abc123","method":"POST","url":"/v1/models/gemini-1.5-flash:generateContent","body":{"contents":[{"parts":[{"text":"Is this Reddit post sarcastic?\n\nTitle: SPY calls printing today 🚀\nBody: Fed decision was bullish, obviously going to 500 tomorrow.\n\nReturn JSON: {\"sarcastic\": <bool>, \"sentiment\": <float -1 to 1>}"}]}],"generationConfig":{"temperature":0.0,"maxOutputTokens":50,"responseMimeType":"application/json","responseSchema":{"type":"object","properties":{"sarcastic":{"type":"boolean"},"sentiment":{"type":"number"}},"required":["sarcastic","sentiment"]}}}}
+{"custom_id":"social_abc123","method":"POST","url":"/v1/models/gemini-2.5-flash-lite:generateContent","body":{"contents":[{"parts":[{"text":"Is this Reddit post sarcastic?\n\nTitle: SPY calls printing today 🚀\nBody: Fed decision was bullish, obviously going to 500 tomorrow.\n\nReturn JSON: {\"sarcastic\": <bool>, \"sentiment\": <float -1 to 1>}"}]}],"generationConfig":{"temperature":0.0,"maxOutputTokens":50,"responseMimeType":"application/json","responseSchema":{"type":"object","properties":{"sarcastic":{"type":"boolean"},"sentiment":{"type":"number"}},"required":["sarcastic","sentiment"]}}}}
 ```
 
 ---
@@ -76,7 +76,7 @@ with open('batch_input.jsonl', 'w') as f:
         prompt_obj = {
             "custom_id": item["id"],
             "method": "POST",
-            "url": "/v1/models/gemini-1.5-flash:generateContent",
+            "url": "/v1/models/gemini-2.5-flash-lite:generateContent",
             "body": {
                 "contents": [{"parts": [{"text": construct_prompt(item)}]}],
                 "generationConfig": {...}

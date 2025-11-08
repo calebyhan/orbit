@@ -69,7 +69,7 @@ data_sources:
   gemini:
     enabled: true
     api_key: "${GEMINI_API_KEY}"
-    model: "gemini-1.5-flash"
+    model: "gemini-2.5-flash-lite"
     batch_size: 100
     escalation_threshold: 0.5
     rate_limit_rpm: 15

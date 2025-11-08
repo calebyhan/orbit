@@ -46,7 +46,7 @@ export ALPACA_API_KEY_ID=... ALPACA_API_SECRET_KEY=...
 * If only 1 key provided, system operates with single-key quota (200 RPD on free tier).
 
 **Free tier limits (per key):**
-* Model: Gemini 2.0 Flash-Lite
+* Model: Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite)
 * 30 RPM, 1M TPM, 200 RPD
 * Typical usage: ~50-80 items/day = 1-2 batch requests
 

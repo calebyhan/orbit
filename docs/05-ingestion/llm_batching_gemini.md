@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Batch and score **all** news and social items with Gemini 2.0 Flash-Lite API, merging results back into curated tables. This is the primary sentiment analysis pathway for ORBIT.
+Batch and score **all** news and social items with Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite), merging results back into curated tables. This is the primary sentiment analysis pathway for ORBIT.
 
 ## Inputs
 

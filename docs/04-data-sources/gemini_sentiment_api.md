@@ -4,11 +4,11 @@
 
 ## Purpose
 
-Define the **primary sentiment analysis pathway** using Google's Gemini 2.0 Flash-Lite API for all news and social media text. This doc standardizes prompt/response schemas, batching, multi-key rotation, and fallbacks.
+Define the **primary sentiment analysis pathway** using Google's Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite) for all news and social media text. This doc standardizes prompt/response schemas, batching, multi-key rotation, and fallbacks.
 
 ## Model selection
 
-**Primary model:** Gemini 2.0 Flash-Lite
+**Primary model:** Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite)
 - **Free tier limits:** 30 RPM, 1M TPM, 200 RPD per API key
 - **Cost (if upgraded):** ~$0.075 per 1M tokens
 - **Performance:** Excellent financial domain understanding, JSON structured output
@@ -28,7 +28,7 @@ Support up to **5 API keys** (expandable if needed) for increased throughput:
 sources:
   gemini:
     enabled: true
-    model: "gemini-2.0-flash-lite"
+    model: "gemini-2.5-flash-lite"
     api_keys:
       - GEMINI_API_KEY_1
       - GEMINI_API_KEY_2
