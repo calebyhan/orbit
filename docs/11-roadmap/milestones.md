@@ -1,5 +1,195 @@
 # ORBIT — Milestones
 
+*Last edited: 2025-11-08*
+
+## Purpose
+
+Define the **phased development roadmap** from M0 (data I/O skeleton) through production and beyond. Each milestone has clear deliverables and acceptance criteria. The sequence below intentionally separates a small, safe "data I/O" first milestone (what to do before any data retrieval) from the heavier work of integrating data gathering and LLM scoring.
+
+---
+
+## Milestone 0: Data I/O skeleton (1 week)
+
+**Goal:** Create a minimal, well-specified input/output surface for the project so downstream code and tests can be built without retrieving live data yet. This lets developers and CI validate end-to-end I/O, schemas, and local workflows before connecting external sources.
+
+### Deliverables
+
+* [ ] `src/` layout and lightweight I/O utilities: `io.read_parquet(path)`, `io.write_parquet(df, path)` and a small fixture loader for test data
+* [ ] Canonical `data/` and `/srv/orbit/data/` layout documented and example directories (`data/sample/news/`, `data/sample/social/`, `data/sample/prices/`) with small sample Parquet files (sanitized)
+* [ ] Clear schemas for raw → curated → features (Parquet schema docs under `docs/12-schemas/` updated if needed)
+* [ ] Minimal CLI entrypoints for local runs: `orbit ingest --local-sample`, `orbit features --from-sample`
+* [ ] Unit tests that exercise read/write and join logic with sample data
+
+### Acceptance Criteria
+
+* IO utilities can read/write Parquet without losing schema metadata
+* Sample data enables a full features:build run in CI (fast, <2 minutes)
+* `ORBIT_DATA_DIR` can point to `/srv/orbit/data` (documented) and the code reads from that path when set
+* No external API keys required to run the tests
+
+### Exit Criteria
+
+* `pytest` passes for I/O tests
+* Documentation updated (`docs/02-architecture/workspace_layout.md`, `03-config`) to reference I/O contract
+
+**Status:** 🟢 Not started / In planning
+
+---
+
+## Milestone 1: Data gathering + Gemini integration (4 weeks)
+
+**Goal:** Implement ingestion connectors for the primary data sources and wire in Gemini LLM scoring (batch pipeline). After this milestone the pipeline will be able to produce curated Parquet outputs for prices, news, and social from live sources.
+
+### Deliverables
+
+* [ ] `ingest:prices` — Stooq CSV downloader → `data/raw/prices/` and `data/curated/prices/` pipeline (EOD)
+* [ ] `ingest:news` — Alpaca news WS client (or REST backfill) that writes raw and curated news Parquet (cutoff discipline enforced)
+* [ ] `ingest:social` — Reddit API puller with rate‑limit handling that writes raw social Parquet
+* [ ] `llm_batching_gemini` — Batch scoring pipeline using `gemini-2.5-flash-lite` with multi-key rotation and raw req/resp persistence
+* [ ] Preprocess hooks: dedupe, novelty (7d), and cutoff enforcement (15:30 ET)
+* [ ] Merge LLM fields into curated tables (`sent_llm, stance, sarcasm, certainty`)
+
+### Acceptance Criteria
+
+* Each ingestion produces daily Parquet files with the documented schema
+* Batch Gemini scoring runs successfully on sample and small live batches; raw request/response saved under `data/raw/gemini/`
+* Backpressure/rate-limit handling and key rotation demonstrated in tests or small runs
+* Logs and rejects written to `data/rejects/` on failures
+
+### Exit Criteria
+
+* 7 consecutive days of stable ingest runs in staging (or smoke tests passing for each connector)
+* Gemini quota handling audited (no silent failures)
+
+**Status:** 🟡 In progress
+
+---
+
+## Milestone 2: Calibration & Risk Controls (2 weeks)
+
+**Goal:** Improve probability calibration, add confidence-based position sizing, and implement risk controls. (This milestone was previously numbered M3.)
+
+### Deliverables
+
+* [ ] **Calibration:** Platt scaling or Isotonic regression on validation set
+* [ ] **Confidence sizing:** Position = f(fused_score) with thresholds (0 / 0.5 / 1.0)
+* [ ] **Risk controls:**
+  - Flatten on missing data (any source >1 day stale)
+  - Flatten on high vol (realized vol > 95th percentile)
+  - Dynamic threshold adjustment by regime
+* [ ] **Monitoring:** Drift dashboard (IC, Sharpe, feature PSI)
+* [ ] **Reports:** Calibration curve, reliability diagram, ECE tracking
+
+### Acceptance Criteria
+
+* **Calibration:** ECE < 0.05 (well-calibrated probabilities)
+* **Brier score:** Improves by ≥0.01 vs uncalibrated
+* **Risk controls:** Flatten triggers <5% of days (avoid overreaction)
+
+### Exit Criteria
+
+* All Level 2-6 gates pass (including promotion criteria)
+* Model ready for "production" (daily scoring on new data)
+
+**Status:** 🔴 Blocked (waiting for M1 completion)
+
+---
+
+## Milestone 3: Production Deployment (2 weeks)
+
+**Goal:** Deploy ORBIT to run daily on live data (scoring only; no actual trading yet).
+
+### Deliverables
+
+* [ ] **Daily automation:** Cron job or scheduler (ingest → score → log)
+* [ ] **Monitoring:** Health checks, data quality alerts, drift tracking
+* [ ] **Logging:** Full audit trail (see `10-operations/logging_audit.md`)
+* [ ] **Dashboards:** Live equity curve, rolling IC, feature distributions
+* [ ] **Runbook:** On-call playbook for common failures (see `10-operations/failure_modes_playbook.md`)
+* [ ] **Backup & recovery:** Cloud backups (data, models, logs)
+
+### Acceptance Criteria
+
+* **Uptime:** 98% successful daily runs over 30 days
+* **Latency:** Full pipeline completes in <15 minutes
+
+### Exit Criteria
+
+* 30 consecutive days of successful daily scoring
+
+**Status:** 🔴 Not Started
+
+---
+
+## Milestone 4: Paper Trading (4 weeks)
+
+**Goal:** Simulate live trading (track performance as if executing trades, but no real money).
+
+*(unchanged from previous plan — content omitted for brevity in this excerpt)*
+
+---
+
+## Milestone 5: Web Dashboard (2 weeks)
+
+*(unchanged; same high-level goals as before)*
+
+---
+
+## Milestone 6: Live Trading (TBD)
+
+*(unchanged; out-of-scope for v1 docs)*
+
+---
+
+## Milestone Tracking
+
+**Dashboard:** `reports/milestones/status.md` (updated weekly)
+
+**Template:**
+
+```markdown
+# ORBIT Milestone Status — 2025-11-08
+
+| Milestone | Status | Progress | Blockers | ETA |
+|-----------|--------|----------|----------|-----|
+| M0: Data I/O skeleton | ⬜ Not Started | 0% | None | 2025-11-15 |
+| M1: Data gathering + Gemini | 🟡 In Progress | 40% | Gemini quota testing | 2025-12-05 |
+| M2: Calibration & Risk | 🔴 Blocked | 0% | Waiting for M1 | 2026-01-05 |
+| M3: Deployment | 🔴 Not Started | 0% | None | 2026-01-20 |
+| M4: Paper Trading | 🔴 Not Started | 0% | None | 2026-02-20 |
+| M5: Web Dashboard | 🔴 Not Started | 0% | Waiting for M3 | 2026-02-25 |
+| M6: Live Trading | 🔴 Not Started | 0% | Risk approval | TBD |
+
+**Last Updated:** 2025-11-08
+```
+
+---
+
+## Acceptance Checklist (Overall v1)
+
+Before declaring **v1 complete** (M2 done):
+
+* [ ] All 3 modalities (price, news, social) integrated and tested
+* [ ] Ablations prove incremental value for each modality
+* [ ] Regime analysis shows robustness across vol/trend/text regimes
+* [ ] Calibration improves Brier score and ECE
+* [ ] Risk controls tested (flatten on missing data, high vol)
+* [ ] Drift monitoring deployed and alerting correctly
+* [ ] Full documentation in `docs/` (orientation, specs, playbooks)
+* [ ] Code coverage ≥80%
+* [ ] Reproducibility verified (independent run replicates results)
+
+---
+
+## Related Files
+
+* `extend_to_single_stocks.md` — Post-v1 single-name extension
+* `future_data_sources.md` — Additional data sources roadmap
+* `09-evaluation/acceptance_gates.md` — Quantitative promotion criteria
+
+```
+# ORBIT — Milestones
+
 *Last edited: 2025-11-06*
 
 ## Purpose
@@ -413,4 +603,3 @@ Before declaring **v1 complete** (M3 done):
 * `09-evaluation/acceptance_gates.md` — Quantitative promotion criteria
 
 ---
-

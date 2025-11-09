@@ -10,7 +10,7 @@ Define the boundaries, goals, deliverables, and non‑goals for **ORBIT v1** so 
 
 * **Asset focus:** S&P 500 tracker (train on `SPY`, validate on `VOO`).
 * **Horizon/frequency:** **daily**, next‑day prediction.
-* **Modalities:** **Prices** (Stooq OHLCV), **News** (Alpaca news WebSocket), **Social** (Reddit API + optional Gemini escalation).
+* **Modalities:** **Prices** (Stooq OHLCV), **News** (Alpaca news WebSocket), **Social** (Reddit API/Twitter API + Gemini sentiment).
 * **Signal:** one daily score (probability/expected return) produced by three heads + **gated fusion**.
 * **Strategy for evaluation:** **long/flat** on SPY/VOO with realistic costs.
 

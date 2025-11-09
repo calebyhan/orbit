@@ -14,17 +14,74 @@ One symbol, fewer mapping errors, fast iteration. Text impact is **gated** so it
 
 ### Quickstart
 
-1. **Install**: Python 3.11+, `pip install -r requirements.txt`.
-2. **Config**: copy `docs/03-config/sample_config.yaml` → `orbit.yaml` and edit keys/paths.
-3. **Environment**: export API keys per `docs/03-config/env_keys.md`.
-4. **Run daily pipeline** (order matters):
+Get up and running quickly — these steps assume a Unix-like shell (bash) and Python 3.11+.
 
-   * `ingest:prices` → Stooq CSV → Parquet
-   * `ingest:news` → Alpaca WS capture
-   * `ingest:social` → Reddit pulls (+ optional Gemini batch)
-   * `features:build` → daily feature row
-   * `train:fit` → price/news/social heads + gated fusion (rolling walk‑forward)
-   * `backtest:run` → long/flat evaluation with costs
+1. Clone the repository and enter the folder
+
+```bash
+git clone https://github.com/calebyhan/orbit.git
+cd orbit
+```
+
+2. Create and activate a virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Configure the project
+
+- Copy the sample config and edit paths/keys as needed:
+
+```bash
+cp docs/03-config/sample_config.yaml orbit.yaml
+# edit orbit.yaml with your editor
+```
+
+- Export API keys (see `docs/03-config/env_keys.md`) or create a `.env` from `.env.example`:
+
+```bash
+cp .env.example .env
+# Fill in keys in .env, then:
+export $(cat .env | xargs)
+```
+
+5. Run the daily pipeline (example order)
+
+Run each pipeline step once when setting up — order matters:
+
+```bash
+# ingest prices
+python -m orbit.cli ingest:prices
+
+# ingest news (Alpaca WS)
+python -m orbit.cli ingest:news
+
+# ingest social (Reddit)
+python -m orbit.cli ingest:social
+
+# build features
+python -m orbit.cli features:build
+
+# train models (heads + fusion)
+python -m orbit.cli train:fit
+
+# run a backtest
+python -m orbit.cli backtest:run
+```
+
+Notes
+
+- If you only want to run a fast, local smoke test (no external keys), use the sample data under `data/sample/` and the CLI flags `--local-sample` where supported.
+- See `docs/02-architecture/workspace_layout.md` for how to point `ORBIT_DATA_DIR` to a centralized data lake (`/srv/orbit/data`) when working on the Ubuntu host.
+
 
 ### Design contracts (must‑follow)
 
