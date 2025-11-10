@@ -79,7 +79,20 @@ export GEMINI_API_KEY_1=...
 
 ## Data directory structure
 
-ORBIT uses two separate data locations:
+ORBIT uses a **dual-directory architecture** to separate sample/test data from production data:
+
+| Directory | Location | Purpose | Version Control | ORBIT_DATA_DIR |
+|-----------|----------|---------|-----------------|----------------|
+| **Sample data** | `./data/sample/` | CI/testing, no external APIs | ✅ Committed | ❌ Ignored |
+| **Production data** | `/srv/orbit/data/` | Live ingestion, features, models | ❌ Not committed | ✅ Configured |
+
+**Key design principles:**
+- **Sample data** (`./data/sample/`) is always used by fixture loaders, regardless of `ORBIT_DATA_DIR`
+- **Production data** location is configured via `ORBIT_DATA_DIR` environment variable
+- Tests and CLI `--local-sample` / `--from-sample` flags use sample data exclusively
+- Production runs (coming in M1) respect `ORBIT_DATA_DIR` for all I/O operations
+
+---
 
 ### 1. Local sample data (for CI/development): `<repo_root>/data/sample/`
 

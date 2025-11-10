@@ -9,11 +9,16 @@ from pathlib import Path
 
 
 def cmd_ingest_local_sample():
-    """Run ingestion on local sample data (M0 deliverable)."""
+    """Run ingestion on local sample data (M0 deliverable).
+
+    Sample data is always loaded from ./data/sample/ regardless of ORBIT_DATA_DIR.
+    This enables testing without external APIs or production data setup.
+    """
     from orbit import io
 
     print("Running ingest with local sample data...")
-    print(f"Data directory: {io.get_data_dir()}")
+    print(f"Sample data location: ./data/sample/")
+    print(f"Production data location (ORBIT_DATA_DIR): {io.get_data_dir()}")
 
     # Load and display sample data to verify it works
     try:
@@ -21,33 +26,41 @@ def cmd_ingest_local_sample():
         df_news = io.load_fixtures("news")
         df_social = io.load_fixtures("social")
 
-        print(f"\n✓ Loaded sample prices: {len(df_prices)} rows")
-        print(f"✓ Loaded sample news: {len(df_news)} rows")
-        print(f"✓ Loaded sample social: {len(df_social)} rows")
+        print(f"\n✓ Loaded sample prices: {len(df_prices)} rows (from ./data/sample/)")
+        print(f"✓ Loaded sample news: {len(df_news)} rows (from ./data/sample/)")
+        print(f"✓ Loaded sample social: {len(df_social)} rows (from ./data/sample/)")
 
         print("\nSample price data:")
         print(df_prices[["date", "symbol", "close"]].to_string())
 
         print("\n✓ Ingest --local-sample completed successfully!")
+        print("\nNote: This command uses sample data from ./data/sample/")
+        print("      For production ingestion, use 'orbit ingest' (coming in M1)")
         return 0
 
     except Exception as e:
         print(f"✗ Error during ingest: {e}", file=sys.stderr)
+        print("\nHint: Run 'python src/orbit/utils/generate_samples.py' to create sample data", file=sys.stderr)
         return 1
 
 
 def cmd_features_from_sample():
-    """Build features from sample data (M0 deliverable)."""
+    """Build features from sample data (M0 deliverable).
+
+    Sample data is always loaded from ./data/sample/ regardless of ORBIT_DATA_DIR.
+    This enables testing without external APIs or production data setup.
+    """
     from orbit import io
 
     print("Building features from sample data...")
-    print(f"Data directory: {io.get_data_dir()}")
+    print(f"Sample data location: ./data/sample/")
+    print(f"Production data location (ORBIT_DATA_DIR): {io.get_data_dir()}")
 
     try:
         # Load sample feature data
         df_features = io.load_fixtures("features")
 
-        print(f"\n✓ Loaded sample features: {len(df_features)} rows")
+        print(f"\n✓ Loaded sample features: {len(df_features)} rows (from ./data/sample/)")
         print(f"✓ Feature count: {len(df_features.columns)} columns")
 
         print("\nFeature summary:")
@@ -67,10 +80,13 @@ def cmd_features_from_sample():
                 print(f"  {feat}: {df_features[feat].iloc[0]}")
 
         print("\n✓ Features --from-sample completed successfully!")
+        print("\nNote: This command uses sample data from ./data/sample/")
+        print("      For production features, use 'orbit features' (coming in M1)")
         return 0
 
     except Exception as e:
         print(f"✗ Error building features: {e}", file=sys.stderr)
+        print("\nHint: Run 'python src/orbit/utils/generate_samples.py' to create sample data", file=sys.stderr)
         return 1
 
 
@@ -86,19 +102,27 @@ def main(argv=None):
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # ingest command
-    ingest_parser = subparsers.add_parser("ingest", help="Run data ingestion")
+    ingest_parser = subparsers.add_parser(
+        "ingest",
+        help="Run data ingestion",
+        description="Ingest data from various sources into ORBIT"
+    )
     ingest_parser.add_argument(
         "--local-sample",
         action="store_true",
-        help="Use local sample data (M0 mode - no external APIs)"
+        help="Use sample data from ./data/sample/ (M0 mode - no external APIs, no ORBIT_DATA_DIR dependency)"
     )
 
     # features command
-    features_parser = subparsers.add_parser("features", help="Build features")
+    features_parser = subparsers.add_parser(
+        "features",
+        help="Build features",
+        description="Build feature tables from ingested data"
+    )
     features_parser.add_argument(
         "--from-sample",
         action="store_true",
-        help="Build features from sample data (M0 mode)"
+        help="Use sample data from ./data/sample/ (M0 mode - no external APIs, no ORBIT_DATA_DIR dependency)"
     )
 
     args = parser.parse_args(argv)
