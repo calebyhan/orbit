@@ -207,3 +207,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ORBIT Data directories
+# Keep sample data (data/sample/) in version control for CI/testing
+# Exclude production/live data directories
+data/raw/
+data/curated/
+data/features/
+data/models/
+data/scores/
+data/rejects/
+# Note: data/sample/ is NOT ignored - it's committed for CI/testing

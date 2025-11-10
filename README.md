@@ -26,7 +26,7 @@ cd orbit
 2. Create and activate a virtual environment
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 ```
 
@@ -77,10 +77,27 @@ python -m orbit.cli train:fit
 python -m orbit.cli backtest:run
 ```
 
-Notes
+### M0 Quickstart (No External APIs)
 
-- If you only want to run a fast, local smoke test (no external keys), use the sample data under `data/sample/` and the CLI flags `--local-sample` where supported.
-- See `docs/02-architecture/workspace_layout.md` for how to point `ORBIT_DATA_DIR` to a centralized data lake (`/srv/orbit/data`) when working on the Ubuntu host.
+For rapid testing without any external API keys:
+
+```bash
+# Generate synthetic sample data
+python src/orbit/utils/generate_samples.py
+
+# Run M0 CLI commands
+orbit ingest --local-sample
+orbit features --from-sample
+
+# Run unit tests
+pytest tests/ -v
+```
+
+**Notes:**
+
+- M0 sample data in `data/sample/` is version controlled and runs entirely offline
+- For production use, see `docs/02-architecture/workspace_layout.md` to configure `ORBIT_DATA_DIR=/srv/orbit/data`
+- The legacy pipeline commands above are placeholders for M1+
 
 
 ### Design contracts (must‑follow)

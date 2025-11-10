@@ -1,6 +1,6 @@
 # ORBIT — Workspace & Data Layout
 
-*Last edited: 2025-11-07*
+*Last edited: 2025-11-09*
 
 This page documents the recommended repo layout, the canonical `src/` package for code, and the shared centralized data location for multi-user development.
 
@@ -59,34 +59,94 @@ Example startup script (in your userspace):
 #!/usr/bin/env bash
 set -euo pipefail
 cd /home/$USER/orbit-workspace
+
+# Create and activate virtual environment
 python -m venv .venv
 . .venv/bin/activate
-pip install -e '.[dev]'
+
+# Install ORBIT in editable mode with dependencies
+pip install -e '.[dev,parquet]'
+
+# Generate sample data for local testing (optional, runs without external APIs)
+python src/orbit/utils/generate_samples.py
+
+# Configure data directory for production use
 export ORBIT_DATA_DIR=/srv/orbit/data
 export GEMINI_API_KEY_1=...
+
+# Or for local development/testing, omit ORBIT_DATA_DIR to use ./data
 ```
 
-## `/srv/orbit/data` layout
+## Data directory structure
 
-Use Parquet partitions and a stable prefix for all environments:
+ORBIT uses two separate data locations:
+
+### 1. Local sample data (for CI/development): `<repo_root>/data/sample/`
+
+Sample data stays in the repository for testing without external APIs:
+
+```
+<repo_root>/data/
+└─ sample/
+   ├─ prices/2024/11/05/
+   │  ├─ SPY.parquet
+   │  ├─ VOO.parquet
+   │  └─ ^SPX.parquet
+   ├─ news/2024/11/05/
+   │  └─ alpaca.parquet
+   ├─ social/2024/11/05/
+   │  └─ reddit.parquet
+   └─ features/2024/11/05/
+      └─ features_daily.parquet
+```
+
+**Used for:**
+- CI pipeline (no external API keys required)
+- Local development and testing
+- Unit tests and integration tests
+
+### 2. Production data lake: `/srv/orbit/data/`
+
+Production and live data stored centrally:
 
 ```
 /srv/orbit/data/
 ├─ raw/
+│  ├─ prices/YYYY/MM/DD/*.parquet
 │  ├─ news/YYYY/MM/DD/*.parquet
 │  └─ social/YYYY/MM/DD/*.parquet
 ├─ curated/
+│  ├─ prices/YYYY/MM/DD/*.parquet
 │  ├─ news/YYYY/MM/DD/*.parquet
 │  └─ social/YYYY/MM/DD/*.parquet
-├─ features/
+├─ features/YYYY/MM/DD/
 │  └─ features_daily.parquet
-└─ models/
-   └─ heads/...
+├─ scores/<run_id>/
+│  └─ scores.parquet
+├─ models/<run_id>/<window_id>/
+│  ├─ heads/
+│  └─ fusion/
+└─ rejects/
+   └─ <source>/<reason>/
 ```
 
-Permissions recommendation:
-- Data lake owner: `orbit-data` system group. Ingest and model jobs run under a service account in this group.
-- Per-user workspaces: owned by user. Grant read access to `/srv/orbit/data` via group membership or POSIX ACLs.
+**Setup instructions:**
+```bash
+# Create centralized data lake
+sudo mkdir -p /srv/orbit/data
+sudo chown $USER:$USER /srv/orbit/data
+
+# Configure environment to use it
+export ORBIT_DATA_DIR=/srv/orbit/data
+
+# Or add to ~/.bashrc
+echo 'export ORBIT_DATA_DIR=/srv/orbit/data' >> ~/.bashrc
+```
+
+**Permissions recommendation:**
+- Data lake owner: `orbit-data` system group
+- Ingest and model jobs run under a service account in this group
+- Per-user workspaces: owned by user, read access to `/srv/orbit/data` via group membership or POSIX ACLs
 
 ## Access via Tailscale
 
@@ -97,3 +157,46 @@ Quick steps:
 2. Authenticate both to your Tailscale account and ensure they are on the same tailnet.
 3. From your local machine: `ssh <tailscale-ip-or-hostname>` into the Ubuntu host (SSH key recommended).
 4. Once connected, your per-user workspace is `/home/<user>/orbit-workspace` and the data lake is mounted at `/srv/orbit/data`.
+
+## I/O Contract (M0)
+
+The `orbit.io` module provides standardized utilities for reading and writing Parquet files:
+
+```python
+from orbit import io
+
+# Reading data (relative paths resolved from ORBIT_DATA_DIR)
+df = io.read_parquet("prices/2024/11/05/SPY.parquet")
+df = io.read_parquet("prices/", filters=[("date", ">=", "2024-11-01")])
+df = io.read_parquet("prices/2024/11/05/SPY.parquet", columns=["date", "close"])
+
+# Writing data
+io.write_parquet(df, "prices/2024/11/05/SPY.parquet")
+
+# Schema validation
+errors = io.validate_schema(df, required_columns=["date", "symbol", "close"])
+
+# Load test fixtures (for CI/development - always reads from local data/sample/)
+df_prices = io.load_fixtures("prices")     # Loads data/sample/prices/2024/11/05/SPY.parquet
+df_news = io.load_fixtures("news")         # Loads data/sample/news/2024/11/05/alpaca.parquet
+df_social = io.load_fixtures("social")     # Loads data/sample/social/2024/11/05/reddit.parquet
+df_features = io.load_fixtures("features") # Loads data/sample/features/2024/11/05/features_daily.parquet
+```
+
+**Key features:**
+- **Automatic path resolution** via `ORBIT_DATA_DIR` environment variable (defaults to `./data`)
+- **Dual-mode operation:**
+  - Development: `ORBIT_DATA_DIR` unset → uses `./data` (includes sample data)
+  - Production: `ORBIT_DATA_DIR=/srv/orbit/data` → uses centralized data lake
+- **Fixture loaders** always read from local `data/sample/` for testing (no external APIs required)
+- **Engine flexibility:** Supports both pyarrow and fastparquet engines (automatically selected)
+- **Schema validation** utilities for data quality checks
+
+**CLI commands (M0):**
+```bash
+# Test with local sample data (no external APIs)
+orbit ingest --local-sample
+orbit features --from-sample
+
+# These commands use fixtures from data/sample/ regardless of ORBIT_DATA_DIR
+```

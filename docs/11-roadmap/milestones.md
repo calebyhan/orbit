@@ -23,6 +23,9 @@ Define a concise, actionable phased roadmap from M0 (data I/O skeleton) through 
 ### Mx — Short title
 Status: ⬜ Not started | Progress: 0% | Dependencies: [Mx-1]
 
+Relevant docs / reading
+- Short list of relevant docs or design specs
+
 Deliverables
 - [ ] Short, testable list of deliverables
 
@@ -43,15 +46,21 @@ Notes / Links
 ## Milestones
 
 ### M0 — Data I/O skeleton
-Status: ⬜ Not started | Progress: 0% | Dependencies: none
+Status: ✅ Complete | Progress: 100% | Dependencies: none
+
+Relevant docs / reading
+- `docs/02-architecture/workspace_layout.md` — workspace layout and data paths
+- `docs/03-config/sample_config.yaml` — config keys and examples (`ORBIT_DATA_DIR`)
+- `docs/12-schemas/features_daily.parquet.schema.md`, `docs/12-schemas/news.parquet.schema.md`, `docs/12-schemas/prices.parquet.schema.md`, `docs/12-schemas/social.parquet.schema.md` — canonical Parquet schemas
+- `docs/05-ingestion/storage_layout_parquet.md` — storage layout and conventions
 
 Deliverables
-- [ ] `src/` layout and lightweight I/O utilities: `io.read_parquet(path)`, `io.write_parquet(df, path)` and a small fixture loader for tests
-- [ ] Canonical `data/` layout and sanitized sample Parquet files under `data/sample/{news,social,prices}/`
-- [ ] Parquet schemas documented under `docs/12-schemas/`
-- [ ] Minimal CLI entrypoints for local runs: `orbit ingest --local-sample`, `orbit features --from-sample`
-- [ ] Unit tests exercising read/write and join logic (fast, deterministic)
-- [ ] CI job: run `pytest` + `coverage` and publish report
+- [x] `src/` layout and lightweight I/O utilities: `io.read_parquet(path)`, `io.write_parquet(df, path)` and a small fixture loader for tests
+- [x] Canonical `data/` layout and sanitized sample Parquet files under `data/sample/{news,social,prices}/`
+- [x] Parquet schemas documented under `docs/12-schemas/` (already existed)
+- [x] Minimal CLI entrypoints for local runs: `orbit ingest --local-sample`, `orbit features --from-sample`
+- [x] Unit tests exercising read/write and join logic (fast, deterministic)
+- [x] CI job: run `pytest` + `coverage` and publish report
 
 Acceptance criteria (measurable)
 - Unit tests covering I/O utilities pass in CI (CI job exits 0)
@@ -69,6 +78,15 @@ Risks
 
 ### M1 — Data gathering + Gemini integration
 Status: 🟡 In progress | Progress: 40% | Dependencies: M0
+
+Relevant docs / reading
+- `docs/04-data-sources/alpaca_news_ws.md` — news source design and cutoffs
+- `docs/04-data-sources/stooq_prices.md` — prices source specification
+- `docs/04-data-sources/reddit_api.md` — social source spec and rate limits
+- `docs/04-data-sources/gemini_sentiment_api.md` — LLM scoring design (Gemini)
+- `docs/04-data-sources/rate_limits.md` and `docs/04-data-sources/tos_compliance.md` — quota and compliance
+- `docs/05-ingestion/news_alpaca_ws_ingest.md`, `docs/05-ingestion/prices_stooq_ingest.md`, `docs/05-ingestion/social_reddit_ingest.md`, `docs/05-ingestion/llm_batching_gemini.md` — ingestion and LLM batching implementation notes
+- `docs/06-preprocessing/deduplication_novelty.md`, `docs/06-preprocessing/time_alignment_cutoffs.md` — preprocess hooks and cutoff discipline
 
 Deliverables
 - [ ] `ingest:prices` — Stooq CSV downloader -> `data/raw/prices/` and `data/curated/prices/` (EOD)
@@ -96,6 +114,12 @@ Risks
 ### M2 — Calibration & Risk Controls
 Status: 🔴 Blocked | Progress: 0% | Dependencies: M1
 
+Relevant docs / reading
+- `docs/09-evaluation/metrics_definitions.md` — definitions for ECE, Brier, IC, Sharpe
+- `docs/09-evaluation/thresholds_position_sizing.md` — position sizing guidance
+- `docs/09-evaluation/acceptance_gates.md` — promotion gates and levels
+- `docs/10-operations/drift_monitoring.md` — drift monitoring and PSI
+
 Deliverables
 - [ ] Implement calibration (Platt scaling or Isotonic regression) and evaluation reporting (ECE, reliability diagrams)
 - [ ] Confidence-based position sizing: Position = f(fused_score) with documented thresholds
@@ -118,6 +142,12 @@ Risks
 ### M3 — Production Deployment
 Status: ⬜ Not started | Progress: 0% | Dependencies: M2
 
+Relevant docs / reading
+- `docs/10-operations/runbook.md` — runbook and run procedures
+- `docs/10-operations/monitoring_dashboards.md` — dashboard specs and alerts
+- `docs/10-operations/data_quality_checks.md` — data quality tests and alerts
+- `docs/10-operations/logging_audit.md` — audit logging and retention
+
 Deliverables
 - [ ] Scheduler for daily runs (ingest → score → log) with health checks
 - [ ] Data-quality alerts, drift tracking, and runbook
@@ -132,6 +162,11 @@ Acceptance criteria
 ### M4 — Paper Trading
 Status: ⬜ Not started | Progress: 0% | Dependencies: M3
 
+Relevant docs / reading
+- `docs/09-evaluation/backtest_rules.md` — backtesting rules and slippage models
+- `docs/09-evaluation/backtest_long_flat_spec.md` — backtest spec and scenarios
+- `docs/09-evaluation/thresholds_position_sizing.md` — sizing and risk rules used in paper runs
+
 Deliverables
 - [ ] Paper trade execution harness with simulated fills, slippage, and costs
 - [ ] Performance reporting and integration tests for a short paper-run
@@ -143,6 +178,11 @@ Acceptance criteria
 
 ### M5 — Web Dashboard
 Status: ⬜ Not started | Progress: 0% | Dependencies: M3
+
+Relevant docs / reading
+- `docs/09-evaluation/dashboard_spec.md` — dashboard requirements and panels
+- `docs/10-operations/monitoring_dashboards.md` — monitoring and alerting integration
+- `docs/reports/milestones/status.md` — weekly milestone tracking (canonical)
 
 Deliverables
 - [ ] Next.js scaffold with basic auth and pages for equity curve, backtest summaries, IC, and current signals
