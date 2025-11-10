@@ -55,29 +55,30 @@ Relevant docs / reading
 - `docs/05-ingestion/storage_layout_parquet.md` — storage layout and conventions
 
 Deliverables
-- [x] `src/` layout and lightweight I/O utilities: `io.read_parquet(path)`, `io.write_parquet(df, path)` and a small fixture loader for tests
-- [x] Canonical `data/` layout and sanitized sample Parquet files under `data/sample/{news,social,prices}/`
-- [x] Parquet schemas documented under `docs/12-schemas/` (already existed)
-- [x] Minimal CLI entrypoints for local runs: `orbit ingest --local-sample`, `orbit features --from-sample`
-- [x] Unit tests exercising read/write and join logic (fast, deterministic)
-- [x] CI job: run `pytest` + `coverage` and publish report
+- [x] `src/` layout and lightweight I/O utilities: `io.read_parquet(path)`, `io.write_parquet(df, path)` and a small fixture loader for tests ✅ `src/orbit/io.py` implemented
+- [x] Canonical `data/` layout with: `data/sample/` (test fixtures), `data/models/production/` (latest model), `data/curated/`, `data/features/`, `data/rejects/` (small samples for tests) ✅ All directories created
+- [x] Parquet schemas documented under `docs/12-schemas/` ✅ 4 schemas: prices, news, social, features_daily
+- [x] Minimal CLI entrypoints for local runs: `orbit ingest --local-sample`, `orbit features --from-sample` ✅ `src/orbit/cli.py` with both commands (predict coming in M2)
+- [x] Unit tests exercising read/write and join logic (fast, deterministic) ✅ `tests/test_io.py` with 28 tests covering I/O, validation, fixtures, integration
+- [x] CI job: run `pytest` + `coverage` and publish report ✅ `.github/workflows/ci.yml` with test/lint/integration jobs + coverage reporting
 
 Acceptance criteria (measurable)
-- Unit tests covering I/O utilities pass in CI (CI job exits 0)
-- Sample data enables `features:build` run in CI within <2 minutes
-- `ORBIT_DATA_DIR` configurable and respected by code (tested by env-var driven CI job)
-- No external API keys required to run CI tests
+- ✅ Unit tests covering I/O utilities pass in CI (CI job exits 0) — 28 tests in test_io.py
+- ✅ Sample data enables `features:build` run in CI within <2 minutes — Integration test verifies with `time` command
+- ✅ `ORBIT_DATA_DIR` configurable and respected by code (tested by env-var driven CI job) — Verified in integration job with ORBIT_DATA_DIR=/tmp/orbit-test-data
+- ✅ No external API keys required to run CI tests — Sample data generated via generate_samples.py (no APIs)
 
 Exit criteria
-- I/O unit tests pass in CI and docs updated (`docs/02-architecture/workspace_layout.md`, `docs/03-config/sample_config.yaml`) to reference the I/O contract
+- ✅ I/O unit tests pass in CI — All tests passing
+- ✅ Docs updated (`docs/02-architecture/workspace_layout.md`, `docs/03-config/sample_config.yaml`) to reference the I/O contract — Updated 2025-11-10
 
 Risks
-- Missing sanitized sample data (mitigate: create minimal synthetic samples in this milestone)
+- ✅ Missing sanitized sample data — RESOLVED: `src/orbit/utils/generate_samples.py` creates synthetic samples
 
 ---
 
 ### M1 — Data gathering + Gemini integration
-Status: 🟡 In progress | Progress: 40% | Dependencies: M0
+Status: 🟡 In progress | Progress: 55% | Dependencies: M0
 
 Relevant docs / reading
 - `docs/04-data-sources/alpaca_news_ws.md` — news source design and cutoffs
@@ -89,7 +90,7 @@ Relevant docs / reading
 - `docs/06-preprocessing/deduplication_novelty.md`, `docs/06-preprocessing/time_alignment_cutoffs.md` — preprocess hooks and cutoff discipline
 
 Deliverables
-- [ ] `ingest:prices` — Stooq CSV downloader -> `data/raw/prices/` and `data/curated/prices/` (EOD)
+- [x] `ingest:prices` — Stooq CSV downloader -> `data/raw/prices/` and `data/curated/prices/` (EOD)
 - [ ] `ingest:news` — Alpaca news WS client or REST backfill producing curated Parquet (cutoff enforced)
 - [ ] `ingest:social` — Reddit API puller with rate-limit handling writing raw social Parquet
 - [ ] `llm_batching_gemini` — Batch scoring using `gemini-2.5-flash-lite` with multi-key rotation and raw req/resp persistence under `data/raw/gemini/`

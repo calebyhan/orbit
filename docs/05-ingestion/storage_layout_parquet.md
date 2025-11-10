@@ -1,64 +1,95 @@
 # ORBIT — Storage Layout (Parquet)
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-10*
 
 ## Purpose
 
 Define the **folder hierarchy and file naming conventions** for all Parquet data stored in the ORBIT pipeline. This ensures consistent organization, efficient querying, and clear audit trails.
 
+This doc covers the full production layout at `/srv/orbit/data/`. For the smaller in-repo layout (`./data/`) see `docs/02-architecture/workspace_layout.md`.
+
 ---
 
-## Directory Structure
+## Directory Structure (Production: `/srv/orbit/data/`)
 
 ```
-data/
-├── prices/
-│   └── YYYY/
-│       └── MM/
-│           └── DD/
-│               ├── SPY.parquet
-│               ├── VOO.parquet
-│               └── ^SPX.parquet
+/srv/orbit/data/
+├── raw/                    # Raw ingested data (no cleaning)
+│   ├── prices/
+│   │   └── YYYY/
+│   │       └── MM/
+│   │           └── DD/
+│   │               ├── SPY.parquet
+│   │               ├── VOO.parquet
+│   │               └── ^SPX.parquet
+│   ├── news/
+│   │   └── YYYY/
+│   │       └── MM/
+│   │           └── DD/
+│   │               └── alpaca.parquet
+│   ├── social/
+│   │   └── YYYY/
+│   │       └── MM/
+│   │           └── DD/
+│   │               └── reddit.parquet
+│   └── gemini/             # Raw LLM request/response logs
+│       └── YYYY/
+│           └── MM/
+│               └── DD/
+│                   └── batch_<timestamp>.json
 │
-├── news/
-│   └── YYYY/
-│       └── MM/
-│           └── DD/
-│               └── alpaca.parquet
+├── curated/                # Cleaned, deduplicated data
+│   ├── prices/
+│   │   └── YYYY/
+│   │       └── MM/
+│   │           └── DD/
+│   │               ├── SPY.parquet
+│   │               └── ...
+│   ├── news/
+│   │   └── YYYY/
+│   │       └── MM/
+│   │           └── DD/
+│   │               └── alpaca.parquet
+│   └── social/
+│       └── YYYY/
+│           └── MM/
+│               └── DD/
+│                   └── reddit.parquet
 │
-├── social/
-│   └── YYYY/
-│       └── MM/
-│           └── DD/
-│               └── reddit.parquet
-│
-├── features/
+├── features/               # Engineered features
 │   └── YYYY/
 │       └── MM/
 │           └── DD/
 │               └── features_daily.parquet
 │
-├── scores/
+├── scores/                 # Model predictions
 │   └── <run_id>/
 │       └── scores.parquet
 │
-└── models/
-    └── <run_id>/
-        └── <window_id>/
-            ├── heads/
-            │   ├── price/
-            │   │   ├── model.pkl
-            │   │   └── calibrator.pkl (optional)
-            │   ├── news/
-            │   │   ├── model.pkl
-            │   │   └── calibrator.pkl (optional)
-            │   └── social/
-            │       ├── model.pkl
-            │       └── calibrator.pkl (optional)
-            └── fusion/
-                ├── fusion_params.json
-                └── calibrator.pkl (optional)
+├── models/                 # Trained model archive
+│   └── <run_id>/
+│       └── <window_id>/
+│           ├── heads/
+│           │   ├── price/
+│           │   │   ├── model.pkl
+│           │   │   └── calibrator.pkl (optional)
+│           │   ├── news/
+│           │   │   ├── model.pkl
+│           │   │   └── calibrator.pkl (optional)
+│           │   └── social/
+│           │       ├── model.pkl
+│           │       └── calibrator.pkl (optional)
+│           └── fusion/
+│               ├── fusion_params.json
+│               └── calibrator.pkl (optional)
+│
+└── rejects/                # Failed quality checks
+    └── <source>/
+        └── <reason>/
+            └── YYYY-MM-DD.parquet
 ```
+
+**Note:** The repo also contains a smaller `./data/` with sample data and the production model. See `docs/02-architecture/workspace_layout.md` for that structure.
 
 ---
 
@@ -136,22 +167,29 @@ python -m orbit.ops.validate_schema --source <prices|news|social|features> --dat
 
 ## Append vs Overwrite Semantics
 
-| Data Type | Write Mode | Rationale |
-|-----------|------------|-----------|
-| Prices | **Overwrite** | Daily static snapshot; may receive late corrections |
-| News | **Append** | Continuous stream; dedupe via content_hash |
-| Social | **Append** | Continuous stream; dedupe via post ID |
-| Features | **Overwrite** | Recomputed daily from upstream sources |
-| Scores | **Append** | Accumulate predictions over time |
+| Data Type | Write Mode | Location | Rationale |
+|-----------|------------|----------|-----------|
+| Raw Prices | **Overwrite** | `/srv/orbit/data/raw/prices/` | Daily static snapshot; may receive late corrections |
+| Raw News | **Append** | `/srv/orbit/data/raw/news/` | Continuous stream; dedupe via content_hash |
+| Raw Social | **Append** | `/srv/orbit/data/raw/social/` | Continuous stream; dedupe via post ID |
+| Curated (all) | **Overwrite** | `/srv/orbit/data/curated/` | Recomputed daily from raw after cleaning |
+| Features | **Overwrite** | `/srv/orbit/data/features/` | Recomputed daily from curated sources |
+| Scores | **Append** | `/srv/orbit/data/scores/` | Accumulate predictions over time |
+| Models | **Write-once** | `/srv/orbit/data/models/` + `./data/models/production/` | Immutable after training; production copy in repo |
 
 ---
 
 ## Retention Policy
 
-* **Raw ingestion data** (prices/news/social): **Retain indefinitely** for audit
-* **Features:** Retain for **2 years** (covers walk-forward history)
-* **Scores:** Retain for **1 year** per run_id
-* **Models:** Retain **top 5 performing runs** + current production model
+| Data Type | Location | Retention | Rationale |
+|-----------|----------|-----------|-----------|
+| **Raw ingestion** (prices/news/social) | `/srv/orbit/data/raw/` | **Indefinite** | Audit trail, can regenerate downstream |
+| **Curated** | `/srv/orbit/data/curated/` | **2 years** | Covers walk-forward history |
+| **Features** | `/srv/orbit/data/features/` | **2 years** | Covers walk-forward history |
+| **Scores** | `/srv/orbit/data/scores/` | **1 year per run_id** | Performance analysis |
+| **Models (archive)** | `/srv/orbit/data/models/` | **Top 5 runs + production** | A/B testing, rollback |
+| **Models (production)** | `./data/models/production/` | **Current only** | In repo, updated on promotion |
+| **Rejects** | `/srv/orbit/data/rejects/` + `./data/rejects/` (samples) | **90 days (external), indefinite (repo samples)** | Debugging, quality monitoring |
 
 ---
 

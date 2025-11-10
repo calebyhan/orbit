@@ -1,11 +1,48 @@
 """CLI entrypoints for ORBIT.
 
-Provides minimal entrypoints for M0: ingest and features commands.
+Provides CLI commands for ingestion, features, and model operations.
+M0: ingest --local-sample, features --from-sample
+M1: ingest prices, ingest news, ingest social
 """
 
 import argparse
 import sys
 from pathlib import Path
+
+
+def cmd_ingest_prices(symbols=None):
+    """Run prices ingestion from Stooq (M1 deliverable).
+
+    Fetches daily OHLCV data for SPY.US, VOO.US, and ^SPX from Stooq,
+    validates, and writes to data/raw/prices/ and data/curated/prices/.
+    """
+    from orbit.ingest import prices
+
+    print("Running prices ingestion from Stooq...")
+
+    try:
+        # Run ingestion
+        results = prices.ingest_prices(
+            symbols=symbols,
+            polite_delay_sec=1.0,  # Be polite to Stooq
+            retries=3,
+        )
+
+        if results:
+            print(f"\n✓ Prices ingestion completed successfully!")
+            print(f"  Ingested {len(results)} symbols")
+            for symbol, df in results.items():
+                print(f"  - {symbol}: {len(df)} rows (latest: {df['date'].max()})")
+            return 0
+        else:
+            print("\n✗ No symbols successfully ingested", file=sys.stderr)
+            return 1
+
+    except Exception as e:
+        print(f"\n✗ Error during prices ingestion: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return 1
 
 
 def cmd_ingest_local_sample():
@@ -101,16 +138,32 @@ def main(argv=None):
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # ingest command
+    # ingest command with subcommands
     ingest_parser = subparsers.add_parser(
         "ingest",
         help="Run data ingestion",
         description="Ingest data from various sources into ORBIT"
     )
+    
+    ingest_subparsers = ingest_parser.add_subparsers(dest="source", help="Data source to ingest")
+    
+    # ingest prices subcommand (M1)
+    prices_parser = ingest_subparsers.add_parser(
+        "prices",
+        help="Ingest prices from Stooq (M1)",
+        description="Fetch daily OHLCV data from Stooq for SPY.US, VOO.US, ^SPX"
+    )
+    prices_parser.add_argument(
+        "--symbols",
+        nargs="+",
+        help="Symbols to ingest (default: SPY.US VOO.US ^SPX)"
+    )
+    
+    # ingest --local-sample flag (M0 backward compatibility)
     ingest_parser.add_argument(
         "--local-sample",
         action="store_true",
-        help="Use sample data from ./data/sample/ (M0 mode - no external APIs, no ORBIT_DATA_DIR dependency)"
+        help="Use sample data from ./data/sample/ (M0 mode - no external APIs)"
     )
 
     # features command
@@ -122,18 +175,23 @@ def main(argv=None):
     features_parser.add_argument(
         "--from-sample",
         action="store_true",
-        help="Use sample data from ./data/sample/ (M0 mode - no external APIs, no ORBIT_DATA_DIR dependency)"
+        help="Use sample data from ./data/sample/ (M0 mode - no external APIs)"
     )
 
     args = parser.parse_args(argv)
 
     # Handle commands
     if args.command == "ingest":
-        if args.local_sample:
+        # M1: ingest prices (live data from Stooq)
+        if hasattr(args, 'source') and args.source == "prices":
+            return cmd_ingest_prices(symbols=getattr(args, 'symbols', None))
+        # M0: ingest --local-sample (sample data)
+        elif args.local_sample:
             return cmd_ingest_local_sample()
         else:
-            print("Error: --local-sample is required for M0", file=sys.stderr)
-            print("Usage: orbit ingest --local-sample", file=sys.stderr)
+            ingest_parser.print_help()
+            print("\nAvailable sources: prices", file=sys.stderr)
+            print("Or use: orbit ingest --local-sample (M0 mode)", file=sys.stderr)
             return 1
 
     elif args.command == "features":

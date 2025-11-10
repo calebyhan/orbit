@@ -61,7 +61,7 @@ This document clarifies the **relationship**, **differences**, and **usage** of 
 - **Complete:** Includes all major configuration categories
 - **Instructive:** Shows environment variable placeholders (`${ALPACA_API_KEY}`)
 - **Extensible:** Demonstrates advanced features (drift monitoring, alerts)
-- **Documentation-focused:** Includes usage examples and changelog
+- **Documentation-focused:** Includes usage examples
 
 **Usage:**
 - Starting point for new ORBIT projects

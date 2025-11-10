@@ -207,9 +207,3 @@ GEMINI_API_KEY=your_gemini_key
 
 * `03-config/config_schema.yaml` — Full schema with all options
 * `03-config/env_keys.md` — API key setup guide
-
----
-
-## Changelog
-
-* YYYY-MM-DDTHH:MM:SS-05:00 — Minimal v1 config template

@@ -1,6 +1,6 @@
 # ORBIT — Workspace & Data Layout
 
-*Last edited: 2025-11-09*
+*Last edited: 2025-11-10*
 
 This page documents the recommended repo layout, the canonical `src/` package for code, and the shared centralized data location for multi-user development.
 
@@ -79,69 +79,127 @@ export GEMINI_API_KEY_1=...
 
 ## Data directory structure
 
-ORBIT uses a **dual-directory architecture** to separate sample/test data from production data:
+ORBIT uses a **hybrid architecture** with some data in the repo and some external:
 
-| Directory | Location | Purpose | Version Control | ORBIT_DATA_DIR |
-|-----------|----------|---------|-----------------|----------------|
-| **Sample data** | `./data/sample/` | CI/testing, no external APIs | ✅ Committed | ❌ Ignored |
-| **Production data** | `/srv/orbit/data/` | Live ingestion, features, models | ❌ Not committed | ✅ Configured |
+| Directory | Location | Purpose | Version Control | Size |
+|-----------|----------|---------|-----------------|------|
+| **Sample data** | `./data/sample/` | CI/testing, no external APIs | ✅ Committed | Small (~MB) |
+| **Production model** | `./data/models/production/` | Latest vetted model for immediate use | ✅ Committed | Small (~MB) |
+| **Curated data** | `./data/curated/` | Cleaned sample data for tests | ✅ Committed | Small (~MB) |
+| **Features** | `./data/features/` | Sample features for tests | ✅ Committed | Small (~MB) |
+| **Rejects** | `./data/rejects/` | Sample rejected records (debugging) | ✅ Committed | Small (~KB) |
+| **Raw data** | `/srv/orbit/data/raw/` | Live raw ingestion | ❌ Not committed | Large (GB+) |
+| **Full curated** | `/srv/orbit/data/curated/` | Full production curated data | ❌ Not committed | Large (GB+) |
+| **Full features** | `/srv/orbit/data/features/` | Full production features | ❌ Not committed | Large (GB+) |
+| **Scores** | `/srv/orbit/data/scores/` | Model predictions by run_id | ❌ Not committed | Large (GB+) |
+| **Model archive** | `/srv/orbit/data/models/` | All trained models by run_id | ❌ Not committed | Large (GB+) |
 
 **Key design principles:**
+- **Small, essential data stays in repo** for easy testing and immediate use after clone
+- **Large, generated data stays external** (`/srv/orbit/data`) to keep repo lean
 - **Sample data** (`./data/sample/`) is always used by fixture loaders, regardless of `ORBIT_DATA_DIR`
-- **Production data** location is configured via `ORBIT_DATA_DIR` environment variable
+- **Production data** location is configured via `ORBIT_DATA_DIR` environment variable (defaults to `./data` for local dev)
 - Tests and CLI `--local-sample` / `--from-sample` flags use sample data exclusively
-- Production runs (coming in M1) respect `ORBIT_DATA_DIR` for all I/O operations
+- Production runs (M1+) respect `ORBIT_DATA_DIR` for all I/O operations
 
 ---
 
-### 1. Local sample data (for CI/development): `<repo_root>/data/sample/`
+### 1. Local repo data (committed): `<repo_root>/data/`
 
-Sample data stays in the repository for testing without external APIs:
+Small, essential data that stays in version control:
 
 ```
 <repo_root>/data/
-└─ sample/
-   ├─ prices/2024/11/05/
-   │  ├─ SPY.parquet
-   │  ├─ VOO.parquet
-   │  └─ ^SPX.parquet
-   ├─ news/2024/11/05/
-   │  └─ alpaca.parquet
-   ├─ social/2024/11/05/
-   │  └─ reddit.parquet
-   └─ features/2024/11/05/
-      └─ features_daily.parquet
+├─ sample/                  # Test fixtures (no external APIs)
+│  ├─ prices/2024/11/05/
+│  │  ├─ SPY.parquet
+│  │  ├─ VOO.parquet
+│  │  └─ ^SPX.parquet
+│  ├─ news/2024/11/05/
+│  │  └─ alpaca.parquet
+│  ├─ social/2024/11/05/
+│  │  └─ reddit.parquet
+│  └─ features/2024/11/05/
+│     └─ features_daily.parquet
+│
+├─ models/
+│  └─ production/           # Latest vetted production model
+│     ├─ heads/
+│     │  ├─ price/
+│     │  │  ├─ model.pkl
+│     │  │  └─ calibrator.pkl
+│     │  ├─ news/
+│     │  │  ├─ model.pkl
+│     │  │  └─ calibrator.pkl
+│     │  └─ social/
+│     │     ├─ model.pkl
+│     │     └─ calibrator.pkl
+│     └─ fusion/
+│        ├─ fusion_params.json
+│        └─ calibrator.pkl
+│
+├─ curated/                 # Small curated samples for tests
+│  ├─ prices/2024/11/05/
+│  ├─ news/2024/11/05/
+│  └─ social/2024/11/05/
+│
+├─ features/                # Sample features for testing
+│  └─ 2024/11/05/
+│     └─ features_daily.parquet
+│
+└─ rejects/                 # Sample rejected records (debugging)
+   ├─ news/duplicate/
+   ├─ social/low_quality/
+   └─ prices/missing_data/
 ```
 
 **Used for:**
 - CI pipeline (no external API keys required)
 - Local development and testing
 - Unit tests and integration tests
+- Immediate model inference after repo clone
 
-### 2. Production data lake: `/srv/orbit/data/`
+**Size limits:** Keep repo data <100MB total (use Git LFS if models exceed 10MB each)
 
-Production and live data stored centrally:
+### 2. Production data lake (external): `/srv/orbit/data/`
+
+Large, generated data stored centrally (not in repo):
 
 ```
 /srv/orbit/data/
-├─ raw/
+├─ raw/                     # Raw ingestion (large, regenerable)
+│  ├─ prices/YYYY/MM/DD/*.parquet
+│  ├─ news/YYYY/MM/DD/*.parquet
+│  ├─ social/YYYY/MM/DD/*.parquet
+│  └─ gemini/YYYY/MM/DD/*.json    # Raw LLM req/resp
+│
+├─ curated/                 # Full production curated data
 │  ├─ prices/YYYY/MM/DD/*.parquet
 │  ├─ news/YYYY/MM/DD/*.parquet
 │  └─ social/YYYY/MM/DD/*.parquet
-├─ curated/
-│  ├─ prices/YYYY/MM/DD/*.parquet
-│  ├─ news/YYYY/MM/DD/*.parquet
-│  └─ social/YYYY/MM/DD/*.parquet
-├─ features/YYYY/MM/DD/
+│
+├─ features/YYYY/MM/DD/     # Full production features
 │  └─ features_daily.parquet
-├─ scores/<run_id>/
+│
+├─ scores/<run_id>/         # Model predictions
 │  └─ scores.parquet
-├─ models/<run_id>/<window_id>/
+│
+├─ models/<run_id>/<window_id>/  # All trained models
 │  ├─ heads/
+│  │  ├─ price/
+│  │  ├─ news/
+│  │  └─ social/
 │  └─ fusion/
-└─ rejects/
+│
+└─ rejects/                 # Full rejected records
    └─ <source>/<reason>/
 ```
+
+**Used for:**
+- Production pipeline runs (M1+)
+- Model training on full historical data
+- Backtest experiments
+- Model archive and A/B testing
 
 **Setup instructions:**
 ```bash
@@ -212,4 +270,7 @@ orbit ingest --local-sample
 orbit features --from-sample
 
 # These commands use fixtures from data/sample/ regardless of ORBIT_DATA_DIR
+
+# Load production model for inference (uses ./data/models/production/)
+orbit predict --date 2024-11-05 --model production
 ```
