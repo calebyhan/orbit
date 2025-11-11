@@ -2,6 +2,14 @@
 
 Lightweight wrappers around pandas/pyarrow for reading/writing Parquet files
 with schema validation and ORBIT_DATA_DIR support.
+
+IMPORTANT: Data storage locations
+- Sample data: Always in ./data/sample/ (committed to git)
+- Production model: Always in ./data/models/production/ (committed to git)
+- ALL production data: In /srv/orbit/data/ (set ORBIT_DATA_DIR=/srv/orbit/data)
+
+Without ORBIT_DATA_DIR set, operations default to ./data which should
+ONLY contain sample data and production models (never raw/curated/features/scores).
 """
 
 import os
@@ -20,15 +28,68 @@ except ImportError:
     pq = None
     PARQUET_ENGINE = "fastparquet"
 
+# Auto-load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load .env from current directory or parents
+except ImportError:
+    pass  # python-dotenv not installed, skip
+
 
 def get_data_dir() -> Path:
     """Get the configured data directory from ORBIT_DATA_DIR env var.
 
     Returns:
         Path to data directory (defaults to ./data if not set)
+        
+    Important:
+        - For production runs: Set ORBIT_DATA_DIR=/srv/orbit/data
+        - Without ORBIT_DATA_DIR: Defaults to ./data (sample data only)
+        - ./data should ONLY contain:
+          * ./data/sample/ (test fixtures)
+          * ./data/models/production/ (latest model)
+        - ALL production data lives in /srv/orbit/data/:
+          * raw/, curated/, features/, scores/, models/
     """
     data_dir = os.getenv("ORBIT_DATA_DIR", "data")
     return Path(data_dir)
+
+
+def _warn_if_writing_to_repo(path: Path) -> None:
+    """Warn if attempting to write production data to repo directory.
+    
+    Checks if path starts with ./data/raw, ./data/curated, ./data/features,
+    or ./data/scores and issues a warning since these should only be in
+    /srv/orbit/data/.
+    """
+    import warnings
+    
+    data_dir = get_data_dir()
+    
+    # Only warn if using default ./data location
+    if str(data_dir) == "data" or data_dir == Path("data"):
+        path_str = str(path)
+        
+        # Check for production data directories in repo
+        production_dirs = ["data/raw/", "data/curated/", "data/features/", "data/scores/"]
+        
+        for prod_dir in production_dirs:
+            if path_str.startswith(prod_dir):
+                warnings.warn(
+                    f"\n{'='*70}\n"
+                    f"WARNING: Writing production data to repo directory!\n"
+                    f"Path: {path}\n\n"
+                    f"This directory should be in /srv/orbit/data/, not ./data/\n"
+                    f"./data/ should ONLY contain sample data and production models.\n\n"
+                    f"To fix: Add to your .env file (automatically loaded):\n"
+                    f"  ORBIT_DATA_DIR=/srv/orbit/data\n"
+                    f"Or export manually:\n"
+                    f"  export ORBIT_DATA_DIR=/srv/orbit/data\n"
+                    f"{'='*70}",
+                    UserWarning,
+                    stacklevel=3
+                )
+                break
 
 
 def read_parquet(
@@ -47,9 +108,12 @@ def read_parquet(
         DataFrame with loaded data
 
     Examples:
-        >>> df = read_parquet("prices/2024/11/05/SPY.parquet")
-        >>> df = read_parquet("prices/", filters=[("date", ">=", "2024-11-01")])
-        >>> df = read_parquet("prices/2024/11/05/SPY.parquet", columns=["date", "close"])
+        >>> # For production (with ORBIT_DATA_DIR=/srv/orbit/data):
+        >>> df = read_parquet("raw/prices/2024/11/05/SPY.parquet")  # Reads from /srv/orbit/data/raw/...
+        >>> df = read_parquet("curated/prices/", filters=[("date", ">=", "2024-11-01")])
+        >>> 
+        >>> # For sample/testing (without ORBIT_DATA_DIR or with fixtures):
+        >>> df = load_fixtures("prices")  # Always reads from ./data/sample/
     """
     path = Path(path)
 
@@ -83,8 +147,12 @@ def write_parquet(
         overwrite: Whether to overwrite existing file (default: True)
 
     Examples:
-        >>> write_parquet(df, "prices/2024/11/05/SPY.parquet")
+        >>> # For production (with ORBIT_DATA_DIR=/srv/orbit/data):
+        >>> write_parquet(df, "raw/prices/2024/11/05/SPY.parquet")  # Writes to /srv/orbit/data/raw/...
         >>> write_parquet(df, "features/2024/11/05/features_daily.parquet")
+        >>> 
+        >>> # WARNING: Do NOT write production data without ORBIT_DATA_DIR set!
+        >>> # Without it, data goes to ./data which should ONLY have sample data.
     """
     path = Path(path)
 
@@ -98,6 +166,9 @@ def write_parquet(
     # Check for overwrite protection
     if path.exists() and not overwrite:
         raise FileExistsError(f"File exists and overwrite=False: {path}")
+
+    # Warn if writing production data to repo directory
+    _warn_if_writing_to_repo(path)
 
     # Write using pandas with available parquet engine
     df.to_parquet(

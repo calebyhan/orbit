@@ -209,12 +209,18 @@ marimo/_lsp/
 __marimo__/
 
 # ORBIT Data directories
+# CRITICAL: Only ./data/sample/ and ./data/models/production/ should be committed
+# ALL other data lives in /srv/orbit/data/ (external, never committed)
+#
 # Keep sample data (data/sample/) in version control for CI/testing
-# Exclude production/live data directories
+# Keep production model (data/models/production/) for immediate inference
+# Exclude everything else - all production data belongs in /srv/orbit/data/
 data/raw/
 data/curated/
 data/features/
-data/models/
 data/scores/
 data/rejects/
+# Exclude non-production model archives (they live in /srv/orbit/data/models/)
+data/models/*
+!data/models/production/
 # Note: data/sample/ is NOT ignored - it's committed for CI/testing

@@ -70,47 +70,46 @@ pip install -e '.[dev,parquet]'
 # Generate sample data for local testing (optional, runs without external APIs)
 python src/orbit/utils/generate_samples.py
 
-# Configure data directory for production use
-export ORBIT_DATA_DIR=/srv/orbit/data
-export GEMINI_API_KEY_1=...
+# Create .env file with your configuration (automatically loaded by ORBIT)
+cp .env.example .env
+# Edit .env to set:
+#   ORBIT_DATA_DIR=/srv/orbit/data
+#   GEMINI_API_KEY_1=...
+#   etc.
 
-# Or for local development/testing, omit ORBIT_DATA_DIR to use ./data
+# No need to manually export! ORBIT automatically loads .env
+# Just run commands directly:
+orbit ingest prices
 ```
 
 ## Data directory structure
 
-ORBIT uses a **hybrid architecture** with some data in the repo and some external:
+ORBIT uses a **strict separation** between repo-committed sample data and external production data:
 
 | Directory | Location | Purpose | Version Control | Size |
 |-----------|----------|---------|-----------------|------|
 | **Sample data** | `./data/sample/` | CI/testing, no external APIs | ✅ Committed | Small (~MB) |
 | **Production model** | `./data/models/production/` | Latest vetted model for immediate use | ✅ Committed | Small (~MB) |
-| **Curated data** | `./data/curated/` | Cleaned sample data for tests | ✅ Committed | Small (~MB) |
-| **Features** | `./data/features/` | Sample features for tests | ✅ Committed | Small (~MB) |
-| **Rejects** | `./data/rejects/` | Sample rejected records (debugging) | ✅ Committed | Small (~KB) |
-| **Raw data** | `/srv/orbit/data/raw/` | Live raw ingestion | ❌ Not committed | Large (GB+) |
-| **Full curated** | `/srv/orbit/data/curated/` | Full production curated data | ❌ Not committed | Large (GB+) |
-| **Full features** | `/srv/orbit/data/features/` | Full production features | ❌ Not committed | Large (GB+) |
-| **Scores** | `/srv/orbit/data/scores/` | Model predictions by run_id | ❌ Not committed | Large (GB+) |
-| **Model archive** | `/srv/orbit/data/models/` | All trained models by run_id | ❌ Not committed | Large (GB+) |
+| **ALL production data** | `/srv/orbit/data/` | All raw, curated, features, scores | ❌ Not committed | Large (GB+) |
 
 **Key design principles:**
-- **Small, essential data stays in repo** for easy testing and immediate use after clone
-- **Large, generated data stays external** (`/srv/orbit/data`) to keep repo lean
-- **Sample data** (`./data/sample/`) is always used by fixture loaders, regardless of `ORBIT_DATA_DIR`
-- **Production data** location is configured via `ORBIT_DATA_DIR` environment variable (defaults to `./data` for local dev)
+- **`./data` contains ONLY sample data and models** - nothing else
+- **ALL production/real data lives in `/srv/orbit/data`** exclusively
+- **Sample data** (`./data/sample/`) is always used by fixture loaders for testing
+- **Production data** location is **always** `/srv/orbit/data` (configurable via `ORBIT_DATA_DIR`)
 - Tests and CLI `--local-sample` / `--from-sample` flags use sample data exclusively
-- Production runs (M1+) respect `ORBIT_DATA_DIR` for all I/O operations
+- Production runs (M1+) must set `ORBIT_DATA_DIR=/srv/orbit/data` for all I/O operations
+- This separation keeps the repo small (~100MB) and avoids accidental commits of large datasets
 
 ---
 
 ### 1. Local repo data (committed): `<repo_root>/data/`
 
-Small, essential data that stays in version control:
+**ONLY sample data and production models** - nothing else belongs here:
 
 ```
 <repo_root>/data/
-├─ sample/                  # Test fixtures (no external APIs)
+├─ sample/                  # Test fixtures (no external APIs) - ONLY committed data
 │  ├─ prices/2024/11/05/
 │  │  ├─ SPY.parquet
 │  │  ├─ VOO.parquet
@@ -122,35 +121,21 @@ Small, essential data that stays in version control:
 │  └─ features/2024/11/05/
 │     └─ features_daily.parquet
 │
-├─ models/
-│  └─ production/           # Latest vetted production model
-│     ├─ heads/
-│     │  ├─ price/
-│     │  │  ├─ model.pkl
-│     │  │  └─ calibrator.pkl
-│     │  ├─ news/
-│     │  │  ├─ model.pkl
-│     │  │  └─ calibrator.pkl
-│     │  └─ social/
-│     │     ├─ model.pkl
-│     │     └─ calibrator.pkl
-│     └─ fusion/
-│        ├─ fusion_params.json
-│        └─ calibrator.pkl
-│
-├─ curated/                 # Small curated samples for tests
-│  ├─ prices/2024/11/05/
-│  ├─ news/2024/11/05/
-│  └─ social/2024/11/05/
-│
-├─ features/                # Sample features for testing
-│  └─ 2024/11/05/
-│     └─ features_daily.parquet
-│
-└─ rejects/                 # Sample rejected records (debugging)
-   ├─ news/duplicate/
-   ├─ social/low_quality/
-   └─ prices/missing_data/
+└─ models/
+   └─ production/           # Latest vetted production model - ONLY committed model
+      ├─ heads/
+      │  ├─ price/
+      │  │  ├─ model.pkl
+      │  │  └─ calibrator.pkl
+      │  ├─ news/
+      │  │  ├─ model.pkl
+      │  │  │  └─ calibrator.pkl
+      │  └─ social/
+      │     ├─ model.pkl
+      │     └─ calibrator.pkl
+      └─ fusion/
+         ├─ fusion_params.json
+         └─ calibrator.pkl
 ```
 
 **Used for:**
@@ -161,58 +146,66 @@ Small, essential data that stays in version control:
 
 **Size limits:** Keep repo data <100MB total (use Git LFS if models exceed 10MB each)
 
+**IMPORTANT:** 
+- Do **NOT** create `./data/raw/`, `./data/curated/`, `./data/features/`, or `./data/scores/` in the repo
+- These directories exist **ONLY** in `/srv/orbit/data/`
+- Sample equivalents are under `./data/sample/` only
+
 ### 2. Production data lake (external): `/srv/orbit/data/`
 
-Large, generated data stored centrally (not in repo):
+**ALL real data** stored centrally (never in repo):
 
 ```
 /srv/orbit/data/
-├─ raw/                     # Raw ingestion (large, regenerable)
+├─ raw/                     # Raw ingestion - ALL production raw data here
 │  ├─ prices/YYYY/MM/DD/*.parquet
 │  ├─ news/YYYY/MM/DD/*.parquet
 │  ├─ social/YYYY/MM/DD/*.parquet
 │  └─ gemini/YYYY/MM/DD/*.json    # Raw LLM req/resp
 │
-├─ curated/                 # Full production curated data
+├─ curated/                 # ALL production curated data here
 │  ├─ prices/YYYY/MM/DD/*.parquet
 │  ├─ news/YYYY/MM/DD/*.parquet
 │  └─ social/YYYY/MM/DD/*.parquet
 │
-├─ features/YYYY/MM/DD/     # Full production features
+├─ features/YYYY/MM/DD/     # ALL production features here
 │  └─ features_daily.parquet
 │
-├─ scores/<run_id>/         # Model predictions
+├─ scores/<run_id>/         # ALL model predictions here
 │  └─ scores.parquet
 │
-├─ models/<run_id>/<window_id>/  # All trained models
+├─ models/<run_id>/<window_id>/  # ALL trained model archive here
 │  ├─ heads/
 │  │  ├─ price/
 │  │  ├─ news/
 │  │  └─ social/
 │  └─ fusion/
 │
-└─ rejects/                 # Full rejected records
+└─ rejects/                 # ALL rejected records here
    └─ <source>/<reason>/
 ```
 
 **Used for:**
-- Production pipeline runs (M1+)
+- **ALL production pipeline runs** (M1+)
 - Model training on full historical data
 - Backtest experiments
 - Model archive and A/B testing
+- **This is the ONLY location for real data**
 
 **Setup instructions:**
 ```bash
-# Create centralized data lake
+# Create centralized data lake (one-time setup)
 sudo mkdir -p /srv/orbit/data
 sudo chown $USER:$USER /srv/orbit/data
 
-# Configure environment to use it
+# ALWAYS set this for production runs
 export ORBIT_DATA_DIR=/srv/orbit/data
 
-# Or add to ~/.bashrc
+# Add to ~/.bashrc to make permanent
 echo 'export ORBIT_DATA_DIR=/srv/orbit/data' >> ~/.bashrc
 ```
+
+**Critical rule:** If `ORBIT_DATA_DIR` is not set, code defaults to `./data` which should **ONLY** contain sample data. Production runs **MUST** set this variable.
 
 **Permissions recommendation:**
 - Data lake owner: `orbit-data` system group
@@ -269,8 +262,13 @@ df_features = io.load_fixtures("features") # Loads data/sample/features/2024/11/
 orbit ingest --local-sample
 orbit features --from-sample
 
-# These commands use fixtures from data/sample/ regardless of ORBIT_DATA_DIR
+# These commands use fixtures from ./data/sample/ regardless of ORBIT_DATA_DIR
 
-# Load production model for inference (uses ./data/models/production/)
+# Production runs - MUST set ORBIT_DATA_DIR first
+export ORBIT_DATA_DIR=/srv/orbit/data
+orbit ingest:prices              # Writes to /srv/orbit/data/raw/prices/
+orbit features:build --date 2024-11-05  # Reads from /srv/orbit/data/, writes to /srv/orbit/data/features/
+
+# Load production model for inference (always uses ./data/models/production/)
 orbit predict --date 2024-11-05 --model production
 ```

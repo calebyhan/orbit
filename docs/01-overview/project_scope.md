@@ -35,7 +35,9 @@ Define the boundaries, goals, deliverables, and non‑goals for **ORBIT v1** so 
 
 * **Working pipeline** (CLI tasks) that runs: ingest → preprocess → features → train → backtest.
 * **Reports** under `reports/` (metrics, ablations, regime slices).
-* **Data lake** under `data/` (prices, news, social, features) as Parquet. The canonical data lake is hosted on a central Ubuntu machine and is accessible to the team via a secure Tailscale connection. Developers have per-user userspaces on the same host (personal workspaces) where they run pipeline tasks and mount or read the shared `data/` lake.
+* **Data lake** at `/srv/orbit/data/` (prices, news, social, features) as Parquet. The canonical data lake is hosted on a central Ubuntu machine and is accessible to the team via a secure Tailscale connection. Developers have per-user userspaces on the same host (personal workspaces) where they run pipeline tasks and read from the shared `/srv/orbit/data/` lake.
+* **Sample data** in `./data/sample/` for CI/testing (no external APIs required).
+* **Production model** in `./data/models/production/` (promoted from archive).
 * **Docs** in `docs/` describing assumptions, constraints, and acceptance checks.
 
 ## Users

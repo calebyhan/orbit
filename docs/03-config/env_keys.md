@@ -1,6 +1,44 @@
 # ORBIT — Environment Keys
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-10*
+
+## Easy Setup: Using .env File (Recommended)
+
+**ORBIT automatically loads environment variables from a `.env` file** - no need to manually export!
+
+```bash
+# One-time setup
+cp .env.example .env
+# Edit .env with your keys
+```
+
+Your `.env` file:
+```bash
+# Alpaca
+ALPACA_API_KEY_ID=your_alpaca_key_id
+ALPACA_API_SECRET_KEY=your_alpaca_secret
+
+# Reddit
+REDDIT_CLIENT_ID=your_reddit_client_id
+REDDIT_CLIENT_SECRET=your_reddit_client_secret
+REDDIT_USER_AGENT=ORBIT/1.0 by you@example.com
+
+# Gemini (up to 5 keys for rotation)
+GEMINI_API_KEY_1=AIza...
+GEMINI_API_KEY_2=AIza...  # optional
+GEMINI_API_KEY_3=AIza...  # optional
+
+# Data directory (IMPORTANT for production)
+ORBIT_DATA_DIR=/srv/orbit/data
+```
+
+**That's it!** Just run ORBIT commands and the `.env` is automatically loaded.
+
+---
+
+## Alternative: Manual Export
+
+If you prefer not to use `.env`, you can manually export environment variables:
 
 Set these as environment variables before running the pipeline. Never hardcode secrets into the repo.
 
@@ -61,11 +99,15 @@ export GEMINI_API_KEY_3="AIza..."
 ## General
 
 * `ORBIT_USER_AGENT`  ← used for all HTTP requests when the source allows custom UA.
-* (optional) `ORBIT_DATA_DIR` to override `paths.data_dir`.
+* `ORBIT_DATA_DIR` ← **IMPORTANT:** Path to production data (set to `/srv/orbit/data` for production)
+* (optional) `ORBIT_CONFIG_PATH` to override config file location.
+* (optional) `ORBIT_LOG_LEVEL` to set logging verbosity (default: INFO)
 
 ## Acceptance checklist
 
-* Secrets are set in the environment (not in git).
+* Secrets are set in `.env` or environment (not in git).
+* `.env` file is listed in `.gitignore` (already configured).
+* `ORBIT_DATA_DIR=/srv/orbit/data` is set for production runs.
 * User‑agent is descriptive and consistent with `docs/04-data-sources/tos_compliance.md`.
 * Running `ingest:*` fails fast with a clear error if a required key is missing.
 

@@ -1,6 +1,6 @@
  # ORBIT — Milestones
 
-*Last edited: 2025-11-09*
+*Last edited: 2025-11-10*
 
 ## Purpose
 
@@ -86,6 +86,7 @@ Relevant docs / reading
 - `docs/04-data-sources/reddit_api.md` — social source spec and rate limits
 - `docs/04-data-sources/gemini_sentiment_api.md` — LLM scoring design (Gemini)
 - `docs/04-data-sources/rate_limits.md` and `docs/04-data-sources/tos_compliance.md` — quota and compliance
+- `docs/05-ingestion/bootstrap_historical_data.md` — initial historical data collection for backtesting
 - `docs/05-ingestion/news_alpaca_ws_ingest.md`, `docs/05-ingestion/prices_stooq_ingest.md`, `docs/05-ingestion/social_reddit_ingest.md`, `docs/05-ingestion/llm_batching_gemini.md` — ingestion and LLM batching implementation notes
 - `docs/06-preprocessing/deduplication_novelty.md`, `docs/06-preprocessing/time_alignment_cutoffs.md` — preprocess hooks and cutoff discipline
 

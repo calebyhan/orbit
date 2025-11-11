@@ -1,7 +1,8 @@
 """ORBIT Prices Ingestion - Stooq CSV downloader.
 
 Fetches daily OHLCV data for SPY.US, VOO.US, and ^SPX from Stooq,
-normalizes to canonical schema, and writes to data/raw/prices/ and data/curated/prices/.
+normalizes to canonical schema, and writes to /srv/orbit/data/raw/prices/
+and /srv/orbit/data/curated/prices/ (or ORBIT_DATA_DIR/raw/prices if configured).
 """
 
 import io
@@ -212,6 +213,11 @@ def ingest_prices(
 
     Returns:
         Dict mapping symbol to DataFrame
+        
+    Note:
+        Data is written to ORBIT_DATA_DIR/raw/prices/ and ORBIT_DATA_DIR/curated/prices/.
+        For production, set ORBIT_DATA_DIR=/srv/orbit/data before running.
+        Without it, defaults to ./data which should ONLY contain sample data.
     """
     # Default symbols
     if symbols is None:
@@ -255,26 +261,23 @@ def ingest_prices(
 
             results[symbol] = df
 
-            # Write raw data (append-only)
+            # Write raw data (symbol-level partitioning - all history in one file)
             if write_raw:
-                # Get today's date for partitioning
-                latest_date = pd.to_datetime(df["date"].max())
-                year, month, day = latest_date.year, latest_date.month, latest_date.day
-
-                raw_path = f"raw/prices/{year:04d}/{month:02d}/{day:02d}/{symbol.replace('.', '_').replace('^', '')}.parquet"
+                # Use symbol-level partitioning (not date-level)
+                # This is more efficient for historical data where we have all dates at once
+                symbol_clean = symbol.replace('.', '_').replace('^', '')
+                raw_path = f"raw/prices/{symbol_clean}.parquet"
 
                 orbit_io.write_parquet(df, raw_path, overwrite=True)
-                print(f"    → Wrote raw data to {raw_path}")
+                print(f"    → Wrote raw data to {raw_path} ({len(df)} rows)")
 
             # Write curated data (same as raw for prices - no additional cleaning needed)
             if write_curated:
-                latest_date = pd.to_datetime(df["date"].max())
-                year, month, day = latest_date.year, latest_date.month, latest_date.day
-
-                curated_path = f"curated/prices/{year:04d}/{month:02d}/{day:02d}/{symbol.replace('.', '_').replace('^', '')}.parquet"
+                symbol_clean = symbol.replace('.', '_').replace('^', '')
+                curated_path = f"curated/prices/{symbol_clean}.parquet"
 
                 orbit_io.write_parquet(df, curated_path, overwrite=True)
-                print(f"    → Wrote curated data to {curated_path}")
+                print(f"    → Wrote curated data to {curated_path} ({len(df)} rows)")
 
         except Exception as e:
             print(f"  ✗ Error fetching {symbol}: {e}")

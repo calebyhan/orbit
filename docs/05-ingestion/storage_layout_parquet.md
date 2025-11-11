@@ -6,22 +6,27 @@
 
 Define the **folder hierarchy and file naming conventions** for all Parquet data stored in the ORBIT pipeline. This ensures consistent organization, efficient querying, and clear audit trails.
 
-This doc covers the full production layout at `/srv/orbit/data/`. For the smaller in-repo layout (`./data/`) see `docs/02-architecture/workspace_layout.md`.
+**Critical distinction:**
+- **`./data/`** (in repo): Contains ONLY sample data and production models (committed to git)
+- **`/srv/orbit/data/`** (external): Contains ALL production/real data (never committed)
+
+This doc primarily covers the production layout at `/srv/orbit/data/`. For sample data structure, see `docs/02-architecture/workspace_layout.md`.
 
 ---
 
-## Directory Structure (Production: `/srv/orbit/data/`)
+## Directory Overview
+
+### Production Data (External): `/srv/orbit/data/`
+
+**ALL real/production data lives here exclusively:**
 
 ```
 /srv/orbit/data/
 ├── raw/                    # Raw ingested data (no cleaning)
 │   ├── prices/
-│   │   └── YYYY/
-│   │       └── MM/
-│   │           └── DD/
-│   │               ├── SPY.parquet
-│   │               ├── VOO.parquet
-│   │               └── ^SPX.parquet
+│   │   ├── SPY_US.parquet       # All SPY history
+│   │   ├── VOO_US.parquet       # All VOO history
+│   │   └── SPX.parquet          # All S&P 500 index history
 │   ├── news/
 │   │   └── YYYY/
 │   │       └── MM/
@@ -40,11 +45,9 @@ This doc covers the full production layout at `/srv/orbit/data/`. For the smalle
 │
 ├── curated/                # Cleaned, deduplicated data
 │   ├── prices/
-│   │   └── YYYY/
-│   │       └── MM/
-│   │           └── DD/
-│   │               ├── SPY.parquet
-│   │               └── ...
+│   │   ├── SPY_US.parquet       # All SPY history (cleaned)
+│   │   ├── VOO_US.parquet       # All VOO history (cleaned)
+│   │   └── SPX.parquet          # All S&P 500 index history (cleaned)
 │   ├── news/
 │   │   └── YYYY/
 │   │       └── MM/
@@ -66,7 +69,7 @@ This doc covers the full production layout at `/srv/orbit/data/`. For the smalle
 │   └── <run_id>/
 │       └── scores.parquet
 │
-├── models/                 # Trained model archive
+├── models/                 # Trained model archive (all experiments)
 │   └── <run_id>/
 │       └── <window_id>/
 │           ├── heads/
@@ -89,21 +92,53 @@ This doc covers the full production layout at `/srv/orbit/data/`. For the smalle
             └── YYYY-MM-DD.parquet
 ```
 
-**Note:** The repo also contains a smaller `./data/` with sample data and the production model. See `docs/02-architecture/workspace_layout.md` for that structure.
+### Sample Data (In Repo): `./data/`
+
+**ONLY sample data and production models (committed to git):**
+
+```
+./data/
+├── sample/                 # Test fixtures for CI/development
+│   ├── prices/2024/11/05/
+│   ├── news/2024/11/05/
+│   ├── social/2024/11/05/
+│   └── features/2024/11/05/
+│
+└── models/
+    └── production/         # Latest vetted production model (promoted from /srv/orbit/data/models/)
+        ├── heads/
+        └── fusion/
+```
+
+**Important:** `./data/raw/`, `./data/curated/`, `./data/features/`, `./data/scores/` should **NEVER** exist in the repo. All production data belongs in `/srv/orbit/data/`.
 
 ---
 
 ## Partitioning Strategy
 
-### Date-Based Partitioning (Prices, News, Social, Features)
+### Symbol-Level Partitioning (Prices)
+
+**Prices use symbol-level partitioning** (one file per symbol with all history):
+
+* **Format:** `<SYMBOL>.parquet` (e.g., `SPY_US.parquet`, `SPX.parquet`)
+* **Example:** `/srv/orbit/data/raw/prices/SPY_US.parquet`
+* **Rationale:**
+  * Bootstrap fetches all history at once (thousands of rows)
+  * Daily updates are simple overwrites with +1 new row
+  * Efficient for time-series queries on a single symbol
+  * Prices dataset is small enough (3 symbols, ~50k rows total)
+  * Simplifies deduplication (anti-join on date within symbol)
+
+### Date-Based Partitioning (News, Social, Features)
 
 * **Format:** `YYYY/MM/DD/` (4-digit year, 2-digit month, 2-digit day)
-* **Example:** `data/prices/2024/11/05/SPY.parquet`
+* **Example:** `/srv/orbit/data/raw/news/2024/11/05/alpaca.parquet`
 * **Rationale:**
   * Efficient daily incremental updates
-  * Easy date range queries
+  * Easy date range queries for text data
   * Clear temporal organization
   * Aligns with daily pipeline execution
+  * Text data is append-heavy (hundreds of items per day)
 
 ### Run-Based Partitioning (Scores, Models)
 
@@ -120,9 +155,10 @@ This doc covers the full production layout at `/srv/orbit/data/`. For the smalle
 
 ### Prices
 
-* **Pattern:** `<SYMBOL>.parquet`
-* **Examples:** `SPY.parquet`, `VOO.parquet`, `^SPX.parquet`
-* **One file per symbol per day**
+* **Pattern:** `<SYMBOL>.parquet` (symbol-level, all history)
+* **Examples:** `SPY_US.parquet`, `VOO_US.parquet`, `SPX.parquet`
+* **Note:** Special characters replaced: `.` → `_`, `^` → removed
+* **Contains:** All historical data for the symbol (updated daily with full history)
 
 ### News
 
@@ -189,7 +225,7 @@ python -m orbit.ops.validate_schema --source <prices|news|social|features> --dat
 | **Scores** | `/srv/orbit/data/scores/` | **1 year per run_id** | Performance analysis |
 | **Models (archive)** | `/srv/orbit/data/models/` | **Top 5 runs + production** | A/B testing, rollback |
 | **Models (production)** | `./data/models/production/` | **Current only** | In repo, updated on promotion |
-| **Rejects** | `/srv/orbit/data/rejects/` + `./data/rejects/` (samples) | **90 days (external), indefinite (repo samples)** | Debugging, quality monitoring |
+| **Sample data** | `./data/sample/` | **Indefinite** | Essential for CI/testing |
 
 ---
 
@@ -223,16 +259,30 @@ Example `_metadata.json`:
 
 ## Access Patterns
 
-### Daily Incremental Updates
+### Single Symbol Time-Series
 ```python
-# Read latest day
-df = pd.read_parquet(f"data/prices/2024/11/05/SPY.parquet")
+# Read all history for one symbol
+df = pd.read_parquet("/srv/orbit/data/raw/prices/SPY_US.parquet")
+
+# Filter to specific date range (efficient with parquet row groups)
+df_filtered = df[df['date'] >= '2024-01-01']
 ```
 
-### Date Range Queries
+### Multiple Symbols
+```python
+# Read multiple symbols
+symbols = ['SPY_US', 'VOO_US', 'SPX']
+dfs = {sym: pd.read_parquet(f"/srv/orbit/data/raw/prices/{sym}.parquet") 
+       for sym in symbols}
+
+# Or combine into one dataframe
+df_all = pd.concat([pd.read_parquet(f"/srv/orbit/data/raw/prices/{sym}.parquet") 
+                    for sym in symbols], ignore_index=True)
+```
+### News/Social Date Range Queries
 ```python
 # Read multiple days (pyarrow handles partitions efficiently)
-df = pd.read_parquet("data/prices/", 
+df = pd.read_parquet("data/news/", 
                      filters=[("date", ">=", "2024-11-01"),
                               ("date", "<=", "2024-11-05")])
 ```
@@ -250,9 +300,34 @@ df = pd.read_parquet(f"data/features/",
 
 ## Backup Strategy
 
-* **Daily snapshots:** Sync `data/` to S3/GCS after each pipeline run
-* **Immutable archives:** Monthly archives of raw data (prices/news/social)
-* **Model checkpoints:** Git LFS or cloud storage for model binaries
+* **Daily snapshots:** Sync `/srv/orbit/data/` to S3/GCS after each pipeline run
+* **Immutable archives:** Monthly archives of raw data (prices/news/social) from `/srv/orbit/data/raw/`
+* **Model checkpoints:** Git LFS for production model in `./data/models/production/`; cloud storage for archive in `/srv/orbit/data/models/`
+
+---
+
+## Storage Location Summary
+
+**In repository (`./data/`):**
+- ✅ Sample data (`./data/sample/`)
+- ✅ Production model (`./data/models/production/`)
+- ❌ NO raw, curated, features, scores, or model archives
+
+**External (`/srv/orbit/data/`):**
+- ✅ ALL raw data
+- ✅ ALL curated data
+- ✅ ALL features
+- ✅ ALL scores
+- ✅ ALL model archives
+- ✅ ALL rejects
+
+**Environment variable:**
+```bash
+# MUST be set for all production operations
+export ORBIT_DATA_DIR=/srv/orbit/data
+```
+
+**Default behavior:** If `ORBIT_DATA_DIR` is unset, code defaults to `./data` which should ONLY contain sample data and production models.
 
 ---
 
@@ -264,6 +339,8 @@ df = pd.read_parquet(f"data/features/",
 - [ ] `_metadata.json` written alongside data files
 - [ ] Compression enabled (snappy)
 - [ ] No duplicate rows within single partition (enforced by dedupe logic)
+- [ ] `ORBIT_DATA_DIR=/srv/orbit/data` set for all production runs
+- [ ] `./data/` contains ONLY sample data and production models (no raw/curated/features)
 
 ---
 

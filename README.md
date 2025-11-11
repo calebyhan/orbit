@@ -45,13 +45,15 @@ cp docs/03-config/sample_config.yaml orbit.yaml
 # edit orbit.yaml with your editor
 ```
 
-- Export API keys (see `docs/03-config/env_keys.md`) or create a `.env` from `.env.example`:
+- Create a `.env` file from the template (automatically loaded by ORBIT):
 
 ```bash
 cp .env.example .env
-# Fill in keys in .env, then:
-export $(cat .env | xargs)
+# Fill in your API keys and set ORBIT_DATA_DIR=/srv/orbit/data
+# The .env file is automatically loaded - no need to manually export!
 ```
+
+**Note:** ORBIT automatically loads environment variables from `.env` when you run any command. You don't need to manually export them.
 
 5. Run the daily pipeline (example order)
 
@@ -59,22 +61,22 @@ Run each pipeline step once when setting up — order matters:
 
 ```bash
 # ingest prices
-python -m orbit.cli ingest:prices
+python3 -m orbit.cli ingest:prices
 
 # ingest news (Alpaca WS)
-python -m orbit.cli ingest:news
+python3 -m orbit.cli ingest:news
 
 # ingest social (Reddit)
-python -m orbit.cli ingest:social
+python3 -m orbit.cli ingest:social
 
 # build features
-python -m orbit.cli features:build
+python3 -m orbit.cli features:build
 
 # train models (heads + fusion)
-python -m orbit.cli train:fit
+python3 -m orbit.cli train:fit
 
 # run a backtest
-python -m orbit.cli backtest:run
+python3 -m orbit.cli backtest:run
 ```
 
 ### M0 Quickstart (No External APIs)

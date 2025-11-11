@@ -13,7 +13,7 @@ Fetch **daily OHLCV** CSVs for `SPY.US`, `VOO.US`, and `^SPX` from **Stooq**, no
 
 ## Outputs
 
-* **Raw Parquet:** `data/raw/prices/` partitioned by `symbol` and/or `date`.
+* **Raw Parquet:** `data/raw/prices/<SYMBOL>.parquet` (symbol-level, all history)
 * **Schema:**
 
   * `date: date`
@@ -23,14 +23,16 @@ Fetch **daily OHLCV** CSVs for `SPY.US`, `VOO.US`, and `^SPX` from **Stooq**, no
   * `run_id: string`
   * `ingested_at: timestamp[ns, UTC]`
 
+**Note:** Prices use symbol-level partitioning (one file per symbol) rather than date-level partitioning. Each file contains the complete history for that symbol and is overwritten daily.
+
 ## Steps
 
 1. **Resolve symbols** from config (ETFs + `^SPX`).
 2. **Download CSV** for each symbol (respect `polite_delay_sec`, retries/backoff).
 3. **Normalize**: lower‑case headers; coerce types; add `symbol`, `run_id`, `ingested_at`.
 4. **QC**: monotone date order; positive prices; volume ≥ 0 (nullable for index).
-5. **Append** to `data/raw/prices/` (append‑only). Avoid duplicates by anti‑join on `(symbol,date)`.
-6. **Cache**: persist last ETag/hash to skip re‑downloads of unchanged files.
+5. **Write** to `data/raw/prices/<SYMBOL>.parquet` (overwrite mode - full history each time).
+6. **Dedupe**: Anti-join on `(symbol, date)` happens naturally since Stooq provides clean data.
 
 ## Pseudocode
 
@@ -54,7 +56,9 @@ for sym in symbols:
     qc_monotone(df, key="date")
     qc_bounds(df, price_cols=["open","high","low","close"], min_val=0)
 
-    append_parquet_partitioned(df, base="data/raw/prices/")
+    # Write symbol-level parquet (all history, overwrite mode)
+    symbol_clean = sym.replace('.', '_').replace('^', '')
+    write_parquet(df, f"data/raw/prices/{symbol_clean}.parquet", overwrite=True)
 ```
 
 ## QC checks
@@ -76,10 +80,11 @@ for sym in symbols:
 
 ## Acceptance checklist
 
-* New rows for each trading day are appended without duplicates.
+* New rows for each trading day are included in the symbol file.
 * Parquet schema matches the **Outputs** definition.
 * QC passes (monotone dates, positive prices, sane volumes).
-* Re‑run does **not** duplicate prior dates; unchanged CSVs are skipped via cache.
+* Re‑run fetches full history and overwrites previous file (idempotent).
+* File structure: `data/raw/prices/SPY_US.parquet` (not date-partitioned).
 
 ---
 

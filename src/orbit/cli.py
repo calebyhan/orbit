@@ -14,11 +14,29 @@ def cmd_ingest_prices(symbols=None):
     """Run prices ingestion from Stooq (M1 deliverable).
 
     Fetches daily OHLCV data for SPY.US, VOO.US, and ^SPX from Stooq,
-    validates, and writes to data/raw/prices/ and data/curated/prices/.
+    validates, and writes to ORBIT_DATA_DIR/raw/prices/ and ORBIT_DATA_DIR/curated/prices/.
+    
+    IMPORTANT: Set ORBIT_DATA_DIR=/srv/orbit/data before running for production.
+    Without it, defaults to ./data which should ONLY contain sample data.
     """
     from orbit.ingest import prices
+    from orbit import io
 
     print("Running prices ingestion from Stooq...")
+    
+    # Show data directory being used
+    data_dir = io.get_data_dir()
+    print(f"Data directory: {data_dir}")
+    
+    # Warn if using default ./data location
+    if str(data_dir) == "data" or data_dir == Path("data"):
+        print("\n" + "="*70)
+        print("WARNING: Using default ./data directory")
+        print("For production, set ORBIT_DATA_DIR in your .env file:")
+        print("  echo 'ORBIT_DATA_DIR=/srv/orbit/data' >> .env")
+        print("Or export manually:")
+        print("  export ORBIT_DATA_DIR=/srv/orbit/data")
+        print("="*70 + "\n")
 
     try:
         # Run ingestion
