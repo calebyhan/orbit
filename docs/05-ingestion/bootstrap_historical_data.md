@@ -1,6 +1,6 @@
 # ORBIT — Bootstrap: Historical Data Collection
 
-*Last edited: 2025-11-10*
+*Last edited: 2025-11-11*
 
 ## Purpose
 
@@ -168,32 +168,46 @@ def scrape_yahoo_news(symbol, start_date, end_date):
 - You've verified it's legally permissible
 - You implement robust error handling and respect rate limits
 
-### Bootstrap Process (To Be Implemented)
+### Bootstrap Process (Implemented in M1)
 
-**Status**: 🔴 Not implemented in M1
+**Status**: ✅ Implemented in M1
 
-**Recommended approach**: Start with Option 1 (Alpaca REST), fall back to Option 2 (alternative APIs) if needed. Avoid Option 3 (scraping) unless necessary.
+**Implementation**: Option 1 (Alpaca REST API) with multi-key rotation support
 
-**Required implementation**: Create `ingest/news_backfill.py` with logic to:
+**Module**: `src/orbit/ingest/news_backfill.py` with logic for:
 
-1. Iterate through date ranges from `start_date` to `end_date`
-2. Fetch news via chosen API (paginated)
-3. Normalize to same schema as `news_alpaca_ws_ingest.md`
-4. Write to `data/raw/news/YYYY/MM/DD/<source>.parquet`
-5. Respect rate limits and implement retry logic
-6. Log API usage and costs (if applicable)
+1. ✅ Date range iteration from `start_date` to `end_date` (daily chunks)
+2. ✅ Pagination handling for Alpaca REST API
+3. ✅ Normalization to same schema as `news_alpaca_ws_ingest.md`
+4. ✅ Write to `data/raw/news/date=YYYY-MM-DD/news_backfill.parquet`
+5. ✅ Rate limiting (simple delay: 60/quota_rpm between requests)
+6. ✅ Retry logic with 429 backoff handling
+7. ✅ Multi-key rotation support (ALPACA_API_KEY_1-5 for 5x throughput)
+8. ✅ Statistics tracking (articles fetched, requests made, date range)
 
 **CLI command**:
 
 ```bash
-python -m orbit.cli ingest:news:backfill \
-  --source alpaca \
-  --start 2020-01-01 \
-  --end 2025-11-10 \
+# Single key mode
+orbit ingest news-backfill \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
   --symbols SPY VOO
+
+# Force single key (disable multi-key)
+orbit ingest news-backfill \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --symbols SPY VOO \
+  --single-key
 ```
 
-**Workaround for M1**: Proceed with price-only features until sufficient news accumulates from daily WS ingestion, or use a shorter historical window (e.g., last 6 months) from free-tier APIs.
+**Multi-key rotation**:
+- Set `ALPACA_API_KEY_1` through `ALPACA_API_KEY_5` in `.env`
+- Set `ALPACA_API_SECRET_1` through `ALPACA_API_SECRET_5` in `.env`
+- Automatically uses round-robin strategy
+- ~200 RPM per key → ~1,000 RPM with 5 keys (5x throughput)
+- Falls back to single key (`ALPACA_API_KEY`/`ALPACA_API_SECRET`) if multi-key not configured
 
 ---
 

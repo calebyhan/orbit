@@ -9,7 +9,7 @@ Define the **primary sentiment analysis pathway** using Google's Gemini 2.5 Flas
 ## Model selection
 
 **Primary model:** Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite)
-- **Free tier limits:** 30 RPM, 1M TPM, 200 RPD per API key
+- **Free tier limits:** 15 RPM, 250K TPM, **1,000 RPD** per API key
 - **Cost (if upgraded):** ~$0.075 per 1M tokens
 - **Performance:** Excellent financial domain understanding, JSON structured output
 - **Latency:** Batch processing completes in <1 minute for typical daily volume
@@ -19,7 +19,7 @@ Define the **primary sentiment analysis pathway** using Google's Gemini 2.5 Flas
 Support up to **5 API keys** (expandable if needed) for increased throughput:
 
 **Benefits:**
-- Combined quota: 5 keys × 200 RPD = **1,000 requests/day**
+- Combined quota: 5 keys × 1,000 RPD = **5,000 requests/day**
 - Automatic failover if one key exhausted
 - Round-robin or least-used distribution strategy
 

@@ -1,6 +1,6 @@
 # ORBIT — Ingestion: LLM Batching (Gemini Sentiment)
 
-*Last edited: 2025-11-06*
+*Last edited: 2025-11-11*
 
 ## Purpose
 
@@ -52,11 +52,32 @@ Batch and score **all** news and social items with Gemini 2.5 Flash-Lite (gemini
 
 ## Acceptance checklist
 
-- All text items processed through Gemini (no local fallback models).
-- Responses validated and merged successfully.
-- Multi-key rotation (if enabled) distributes load and respects per-key quotas.
-- Rate limits respected; errors logged to `data/rejects/gemini/`.
-- Total daily usage stays within combined key quotas (e.g., 1,000 RPD with 5 keys).
+- ✅ All text items processed through Gemini (no local fallback models).
+- ✅ Responses validated and merged successfully.
+- ✅ Multi-key rotation (if enabled) distributes load and respects per-key quotas.
+- ✅ Rate limits respected; errors logged with neutral sentiment fallback.
+- ✅ Total daily usage stays within combined key quotas (e.g., 1,000 RPD with 5 keys).
+
+## Implementation status (2025-11-11)
+
+* **Module:** `src/orbit/ingest/llm_gemini.py`
+* **Key rotation utility:** `src/orbit/utils/key_rotation.py`
+* **Model:** `gemini-2.5-flash-lite` (15 RPM, 250K TPM, **1,000 RPD** per key)
+* **Features implemented:**
+  - Batch sentiment scoring using `gemini-2.5-flash-lite`
+  - Multi-key rotation manager (up to 5 keys = 5,000 RPD combined)
+  - Rotation strategies: round-robin or least-used
+  - Per-key quota tracking (1,000 RPD with Pacific timezone reset)
+  - Structured JSON output: `sent_llm`, `stance`, `sarcasm`, `certainty`, `toxicity`
+  - Response validation with 1:1 ID mapping
+  - Value clamping (sent_llm: [-1,1], certainty/toxicity: [0,1])
+  - Exponential backoff with bounded retries (3 attempts)
+  - Neutral sentiment fallback on errors/quota exhaustion
+  - Raw request/response persistence to `data/raw/gemini/` as JSONL
+  - Usage statistics and key rotation logging
+* **Dependencies:** `requests`, `pytz`
+* **Data output:** `ORBIT_DATA_DIR/raw/gemini/date=YYYY-MM-DD/batch_{run_id}.jsonl`
+* **Usage:** Call `batch_score_gemini(df, text_column='text', id_column='id', batch_size=200, quota_rpd=1000, strategy='round_robin')`
 
 ---
 

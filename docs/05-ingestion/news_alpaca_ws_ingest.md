@@ -1,6 +1,6 @@
 # ORBIT — Ingestion: Alpaca News WebSocket
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-11*
 
 ## Purpose
 
@@ -9,7 +9,7 @@ Stream **real-time news** from Alpaca’s Market Data **News WebSocket**, normal
 ## Inputs
 
 * **Config:** `sources.alpaca_news.*`, `paths.*`, `schedule.*`
-* **Creds:** `ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY`
+* **Creds:** `ALPACA_API_KEY`, `ALPACA_API_SECRET`
 * **Symbols:** default `["SPY", "VOO"]` (≤30 free-tier cap)
 
 ## Outputs
@@ -77,10 +77,26 @@ while ws.open:
 
 ## Acceptance checklist
 
-* Connects, subscribes, and persists normalized rows with `msg_id`, `published_at`, `received_at`.
-* Dedup works across reconnects; no duplicate msg_ids in raw.
-* Flushes occur on both size and time triggers.
-* Curation enforces the **15:30 ET** cutoff downstream.
+* ✅ Connects, subscribes, and persists normalized rows with `msg_id`, `published_at`, `received_at`.
+* ✅ Dedup works across reconnects; no duplicate msg_ids in raw.
+* ✅ Flushes occur on both size and time triggers.
+* [ ] Curation enforces the **15:30 ET** cutoff downstream (pending preprocessing implementation).
+
+## Implementation status (2025-11-11)
+
+* **Module:** `src/orbit/ingest/news.py`
+* **CLI:** `orbit ingest news [--symbols SPY VOO] [--duration N]`
+* **Features implemented:**
+  - WebSocket connection with authentication
+  - Message normalization and validation
+  - In-memory buffering with deduplication (by msg_id)
+  - Flush policy: size-based (100 messages) and time-based (5 minutes)
+  - Exponential backoff reconnection (up to 5 attempts)
+  - Graceful shutdown with buffer flush on Ctrl+C
+  - Multi-key support ready (reads ALPACA_API_KEY/SECRET from .env)
+  - Statistics tracking (messages received/buffered/rejected, flushes)
+* **Dependencies:** `websocket-client==1.8.0`
+* **Data output:** `ORBIT_DATA_DIR/raw/news/date=YYYY-MM-DD/news.parquet`
 
 ---
 

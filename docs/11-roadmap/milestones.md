@@ -1,6 +1,6 @@
  # ORBIT — Milestones
 
-*Last edited: 2025-11-10*
+*Last edited: 2025-11-11*
 
 ## Purpose
 
@@ -78,7 +78,7 @@ Risks
 ---
 
 ### M1 — Data gathering + Gemini integration
-Status: 🟡 In progress | Progress: 55% | Dependencies: M0
+Status: 🟡 In progress | Progress: 75% | Dependencies: M0
 
 Relevant docs / reading
 - `docs/04-data-sources/alpaca_news_ws.md` — news source design and cutoffs
@@ -92,9 +92,9 @@ Relevant docs / reading
 
 Deliverables
 - [x] `ingest:prices` — Stooq CSV downloader -> `data/raw/prices/` and `data/curated/prices/` (EOD)
-- [ ] `ingest:news` — Alpaca news WS client or REST backfill producing curated Parquet (cutoff enforced)
+- [x] `ingest:news` — Alpaca news WS client producing raw Parquet with deduplication and buffering (`src/orbit/ingest/news.py`, CLI: `orbit ingest news`); includes REST API historical backfill with multi-key rotation (`src/orbit/ingest/news_backfill.py`, CLI: `orbit ingest news-backfill`)
 - [ ] `ingest:social` — Reddit API puller with rate-limit handling writing raw social Parquet
-- [ ] `llm_batching_gemini` — Batch scoring using `gemini-2.5-flash-lite` with multi-key rotation and raw req/resp persistence under `data/raw/gemini/`
+- [x] `llm_batching_gemini` — Batch scoring using `gemini-2.5-flash-lite` with multi-key rotation (up to 5 keys, 5,000 RPD combined) and raw req/resp persistence under `data/raw/gemini/` (`src/orbit/ingest/llm_gemini.py` with `src/orbit/utils/key_rotation.py`)
 - [ ] Preprocess hooks: dedupe, novelty window=7d, cutoff enforcement (15:30 ET)
 - [ ] Merge LLM fields into curated tables (`sent_llm`, `stance`, `sarcasm`, `certainty`)
 - [ ] `train:walkforward` harness and `backtest:run` CLI

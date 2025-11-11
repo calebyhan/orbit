@@ -1,16 +1,19 @@
 # ORBIT
 
-*Last edited: 2025-11-05*
+*Last edited: 2025-11-11*
 
 **What is ORBIT?**
 ORBIT (Observational Reasoning & Behavior-Integrated Trading) is a free‑first, daily **tri‑modal** alpha engine for the S&P 500 ETF (SPY/VOO).
 
-* **Prices:** Stooq OHLCV for `SPY.US`, `VOO.US`, and `^SPX`
-* **News:** Alpaca Market Data **news WebSocket** (≤30 symbols on free tier)
-* **Social:** Reddit API (r/stocks, r/investing, r/wallstreetbets) with Gemini AI sentiment scoring.
+* **Prices:** Stooq OHLCV for `SPY.US`, `VOO.US`, and `^SPX` ✅
+* **News:** Alpaca Market Data **news WebSocket** (≤30 symbols on free tier) ✅
+* **Social:** Reddit API (r/stocks, r/investing, r/wallstreetbets) 🚧
+* **LLM Sentiment:** Gemini 2.0 Flash-Lite with multi-key rotation (up to 5 keys) ✅
 
 **Why index‑first?**
 One symbol, fewer mapping errors, fast iteration. Text impact is **gated** so it weighs more only on news/social burst days.
+
+**Current Status:** M1 — Data gathering + Gemini integration (75% complete)
 
 ### Quickstart
 
@@ -49,34 +52,91 @@ cp docs/03-config/sample_config.yaml orbit.yaml
 
 ```bash
 cp .env.example .env
-# Fill in your API keys and set ORBIT_DATA_DIR=/srv/orbit/data
-# The .env file is automatically loaded - no need to manually export!
+# Edit .env and fill in your API keys (see below)
 ```
 
 **Note:** ORBIT automatically loads environment variables from `.env` when you run any command. You don't need to manually export them.
 
-5. Run the daily pipeline (example order)
+**Required API Keys (M1):**
+
+```bash
+# Alpaca (news WebSocket + REST API) - FREE tier available
+# Sign up at: https://alpaca.markets
+# Single key mode (WebSocket only):
+ALPACA_API_KEY=your_alpaca_api_key
+ALPACA_API_SECRET=your_alpaca_api_secret
+
+# Multi-key mode (for historical backfill 5x throughput):
+# REST API: ~200 RPM per key, 5 keys = ~1,000 RPM combined
+ALPACA_API_KEY_1=your_alpaca_key_1
+ALPACA_API_SECRET_1=your_alpaca_secret_1
+ALPACA_API_KEY_2=your_alpaca_key_2
+ALPACA_API_SECRET_2=your_alpaca_secret_2
+# ... up to _5 for maximum throughput
+
+# Gemini API (sentiment analysis) - FREE tier: 1,000 RPD per key
+# Get keys at: https://makersuite.google.com/app/apikey
+# Model: gemini-2.5-flash-lite (15 RPM, 250K TPM, 1,000 RPD)
+GEMINI_API_KEY_1=your_gemini_key_1
+
+# Optional: Add up to 5 Gemini keys for higher throughput (5,000 RPD combined)
+GEMINI_API_KEY_2=your_gemini_key_2
+GEMINI_API_KEY_3=your_gemini_key_3
+GEMINI_API_KEY_4=your_gemini_key_4
+GEMINI_API_KEY_5=your_gemini_key_5
+
+# Reddit API (coming soon in M1)
+REDDIT_CLIENT_ID=your_reddit_client_id
+REDDIT_CLIENT_SECRET=your_reddit_client_secret
+REDDIT_USER_AGENT=ORBIT/1.0 by you@example.com
+
+# Runtime configuration
+ORBIT_DATA_DIR=/srv/orbit/data  # or leave blank to use ./data
+ORBIT_USER_AGENT=ORBIT/1.0
+ORBIT_LOG_LEVEL=INFO
+```
+
+5. Run the daily pipeline (M1 commands)
 
 Run each pipeline step once when setting up — order matters:
 
 ```bash
-# ingest prices
-python3 -m orbit.cli ingest:prices
+# M1: Ingest prices from Stooq (one-time historical + daily updates)
+orbit ingest prices
 
-# ingest news (Alpaca WS)
-python3 -m orbit.cli ingest:news
+# M1: Ingest news from Alpaca WebSocket (long-running, press Ctrl+C to stop)
+# This streams real-time news - run in background or separate terminal
+orbit ingest news --symbols SPY VOO
 
-# ingest social (Reddit)
-python3 -m orbit.cli ingest:social
+# M1: Backfill historical news (for backtesting)
+# Uses REST API with optional multi-key rotation for 5x throughput
+orbit ingest news-backfill --start 2024-01-01 --end 2024-12-31 --symbols SPY VOO
 
-# build features
-python3 -m orbit.cli features:build
+# M1: Score sentiment with Gemini (batch processing)
+# Run this after collecting news to add sentiment scores
+python -m orbit.ingest.llm_gemini  # Programmatic API
 
-# train models (heads + fusion)
-python3 -m orbit.cli train:fit
+# Coming in M1: Social media ingestion
+# orbit ingest social
 
-# run a backtest
-python3 -m orbit.cli backtest:run
+# Coming in M2+: Features, training, and backtesting
+# orbit features build
+# orbit train fit
+# orbit backtest run
+```
+
+**Multi-key rotation example:**
+
+```bash
+# Alpaca REST API (historical backfill) automatically uses all configured keys
+# ALPACA_API_KEY_1/SECRET_1 through _5
+# Default: round-robin strategy, ~200 RPM per key
+# With 5 keys: ~1,000 RPM combined throughput (5x faster backfill)
+
+# Gemini automatically uses all configured keys (GEMINI_API_KEY_1 through _5)
+# Model: gemini-2.5-flash-lite
+# Default: round-robin strategy, 1,000 RPD per key
+# With 5 keys: 5,000 requests per day combined throughput
 ```
 
 ### M0 Quickstart (No External APIs)
@@ -87,7 +147,7 @@ For rapid testing without any external API keys:
 # Generate synthetic sample data
 python src/orbit/utils/generate_samples.py
 
-# Run M0 CLI commands
+# Run M0 CLI commands (offline mode)
 orbit ingest --local-sample
 orbit features --from-sample
 
@@ -98,8 +158,8 @@ pytest tests/ -v
 **Notes:**
 
 - M0 sample data in `data/sample/` is version controlled and runs entirely offline
-- For production use, see `docs/02-architecture/workspace_layout.md` to configure `ORBIT_DATA_DIR=/srv/orbit/data`
-- The legacy pipeline commands above are placeholders for M1+
+- For production use, set `ORBIT_DATA_DIR=/srv/orbit/data` in `.env`
+- See `docs/02-architecture/workspace_layout.md` for data directory structure
 
 
 ### Design contracts (must‑follow)
@@ -109,13 +169,44 @@ pytest tests/ -v
 * **Gating:** up‑weight text when `news_count_z` or `post_count_z` is high.
 * **Ablations required:** Price‑only vs +News vs +Social vs All.
 
-### Outputs
+### Data Outputs (M1)
 
-* Parquet tables in `data/` (prices/news/social/features)
-* Backtest report in `reports/` per `docs/09-evaluation/dashboard_spec.md`
+* **Prices:** `data/raw/prices/{symbol}.parquet` and `data/curated/prices/{symbol}.parquet`
+* **News:** `data/raw/news/date=YYYY-MM-DD/news.parquet` (real-time WebSocket stream)
+* **Gemini sentiment:** `data/raw/gemini/date=YYYY-MM-DD/batch_{run_id}.jsonl` (raw req/resp audit trail)
+* **Features:** `data/features/features_daily.parquet` (coming in M1)
+* **Backtest reports:** `reports/` per `docs/09-evaluation/dashboard_spec.md` (coming in M2+)
 
-### Acceptance checklist (LLM/human)
+### Key Features (M1)
 
-* Can you list the 6 daily jobs in order?
-* Did you respect the 15:30 ET cutoff and lags?
-* Do ablations show text adds value on burst days?
+✅ **Multi-API-Key Rotation**
+- **Gemini:** Supports up to 5 API keys for 5x throughput (5,000 RPD combined)
+- **Alpaca REST:** Supports up to 5 API keys for 5x throughput (~1,000 RPM combined)
+- Automatic failover and load balancing (round-robin or least-used strategies)
+- Per-key quota tracking with Pacific timezone reset (matches Gemini's API reset schedule)
+- Model: gemini-2.5-flash-lite (15 RPM, 250K TPM, 1,000 RPD per key)
+
+✅ **Real-time News Ingestion**
+- WebSocket streaming from Alpaca with automatic reconnection
+- In-memory buffering with deduplication
+- Graceful shutdown and audit trail
+
+✅ **Historical News Backfill**
+- REST API pagination for historical data collection
+- Multi-key rotation for 5x faster backfill (~1,000 RPM with 5 keys)
+- Same normalized schema as real-time ingestion
+- Date range iteration with rate limiting
+
+✅ **Sentiment Analysis Pipeline**
+- Batch processing with Gemini 2.5 Flash-Lite (15 RPM, 250K TPM, 1,000 RPD)
+- Structured output: sentiment [-1,1], stance (bull/bear/neutral), certainty [0,1]
+- Neutral fallback on quota exhaustion or errors
+- Cost-effective: FREE tier handles ~50-80 news items/day easily with single key
+
+### Acceptance Checklist (M1)
+
+* ✅ Can you ingest prices from Stooq without errors?
+* ✅ Can you stream news from Alpaca WebSocket with deduplication?
+* ✅ Can you batch score sentiment with Gemini using multi-key rotation?
+* [ ] Did you respect the 15:30 ET cutoff and lags? (preprocessing in progress)
+* [ ] Do ablations show text adds value on burst days? (coming in M2)
