@@ -70,6 +70,7 @@ def cmd_ingest_news(symbols=None, duration_minutes=None):
     and writes to ORBIT_DATA_DIR/raw/news/.
 
     IMPORTANT: Set ALPACA_API_KEY and ALPACA_API_SECRET in .env before running.
+    Note: WebSocket uses non-numbered keys. For historical backfill, use 'orbit ingest news-backfill'.
     This is a long-running process - press Ctrl+C to stop gracefully.
     """
     from orbit.ingest import news
@@ -107,9 +108,11 @@ def cmd_ingest_news(symbols=None, duration_minutes=None):
 
     except ValueError as e:
         print(f"\n✗ Configuration error: {e}", file=sys.stderr)
-        print("\nMake sure to set credentials in .env:", file=sys.stderr)
+        print("\nWebSocket credentials required in .env:", file=sys.stderr)
         print("  ALPACA_API_KEY=your_key", file=sys.stderr)
         print("  ALPACA_API_SECRET=your_secret", file=sys.stderr)
+        print("\nNote: For historical backfill, use 'orbit ingest news-backfill'", file=sys.stderr)
+        print("      which requires ALPACA_API_KEY_1/SECRET_1 instead.", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"\n✗ Error during news ingestion: {e}", file=sys.stderr)
@@ -124,8 +127,9 @@ def cmd_ingest_news_backfill(symbols=None, start_date=None, end_date=None, multi
     Fetches historical news for backtesting using Alpaca's REST API.
     Supports multi-key rotation for 5x throughput.
 
-    IMPORTANT: Set ALPACA_API_KEY and ALPACA_API_SECRET in .env.
-    For multi-key: Set ALPACA_API_KEY_1 through ALPACA_API_KEY_5 for 5x throughput.
+    IMPORTANT: Set ALPACA_API_KEY_1 and ALPACA_API_SECRET_1 in .env (REST API credentials).
+    For multi-key: Set ALPACA_API_KEY_2 through ALPACA_API_KEY_5 for up to 5x throughput.
+    Note: WebSocket (orbit ingest news) uses non-numbered ALPACA_API_KEY/SECRET.
     """
     from orbit.ingest import news_backfill
     from orbit import io
@@ -168,13 +172,14 @@ def cmd_ingest_news_backfill(symbols=None, start_date=None, end_date=None, multi
 
     except ValueError as e:
         print(f"\n✗ Configuration error: {e}", file=sys.stderr)
-        print("\nFor single key:", file=sys.stderr)
-        print("  ALPACA_API_KEY=your_key", file=sys.stderr)
-        print("  ALPACA_API_SECRET=your_secret", file=sys.stderr)
-        print("\nFor multi-key (5x throughput):", file=sys.stderr)
+        print("\nREST API credentials required in .env:", file=sys.stderr)
         print("  ALPACA_API_KEY_1=your_key_1", file=sys.stderr)
         print("  ALPACA_API_SECRET_1=your_secret_1", file=sys.stderr)
-        print("  (repeat for _2 through _5)", file=sys.stderr)
+        print("\nFor multi-key (5x throughput):", file=sys.stderr)
+        print("  ALPACA_API_KEY_2=your_key_2", file=sys.stderr)
+        print("  ALPACA_API_SECRET_2=your_secret_2", file=sys.stderr)
+        print("  (repeat for _3 through _5)", file=sys.stderr)
+        print("\nNote: WebSocket (orbit ingest news) uses non-numbered ALPACA_API_KEY/SECRET.", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"\n✗ Error during news backfill: {e}", file=sys.stderr)

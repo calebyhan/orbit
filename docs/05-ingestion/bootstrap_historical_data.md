@@ -188,26 +188,22 @@ def scrape_yahoo_news(symbol, start_date, end_date):
 **CLI command**:
 
 ```bash
-# Single key mode
+# REST API backfill with multi-key rotation
 orbit ingest news-backfill \
   --start 2024-01-01 \
   --end 2024-12-31 \
   --symbols SPY VOO
 
-# Force single key (disable multi-key)
-orbit ingest news-backfill \
-  --start 2024-01-01 \
-  --end 2024-12-31 \
-  --symbols SPY VOO \
-  --single-key
+# Note: Requires ALPACA_API_KEY_1/SECRET_1 (and optionally _2-_5) in .env
+# WebSocket ingestion (orbit ingest news) uses separate ALPACA_API_KEY/SECRET
 ```
 
 **Multi-key rotation**:
-- Set `ALPACA_API_KEY_1` through `ALPACA_API_KEY_5` in `.env`
+- Set `ALPACA_API_KEY_1` through `ALPACA_API_KEY_5` in `.env` (REST API credentials)
 - Set `ALPACA_API_SECRET_1` through `ALPACA_API_SECRET_5` in `.env`
 - Automatically uses round-robin strategy
 - ~200 RPM per key → ~1,000 RPM with 5 keys (5x throughput)
-- Falls back to single key (`ALPACA_API_KEY`/`ALPACA_API_SECRET`) if multi-key not configured
+- **Note:** WebSocket real-time ingestion (`orbit ingest news`) uses separate non-numbered keys (`ALPACA_API_KEY`/`ALPACA_API_SECRET`) for rate limit isolation
 
 ---
 
@@ -434,7 +430,7 @@ See `docs/05-ingestion/storage_layout_parquet.md`:
 ### News backfill fails with 401/403
 
 **Cause**: Invalid Alpaca API keys or rate limit  
-**Fix**: Verify `ALPACA_API_KEY_ID` and `ALPACA_API_SECRET_KEY`; respect rate limits (see `04-data-sources/rate_limits.md`)
+**Fix**: Verify `ALPACA_API_KEY_1` and `ALPACA_API_SECRET_1` in .env; respect rate limits (see `04-data-sources/rate_limits.md`)
 
 ### Social features all zeros
 

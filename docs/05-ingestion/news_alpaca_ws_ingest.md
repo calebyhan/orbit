@@ -9,8 +9,9 @@ Stream **real-time news** from Alpaca’s Market Data **News WebSocket**, normal
 ## Inputs
 
 * **Config:** `sources.alpaca_news.*`, `paths.*`, `schedule.*`
-* **Creds:** `ALPACA_API_KEY`, `ALPACA_API_SECRET`
+* **Creds:** `ALPACA_API_KEY`, `ALPACA_API_SECRET` — WebSocket credentials (non-numbered)
 * **Symbols:** default `["SPY", "VOO"]` (≤30 free-tier cap)
+* **Note:** Historical backfill uses separate numbered keys (`ALPACA_API_KEY_1-5`) via `orbit ingest news-backfill`
 
 ## Outputs
 

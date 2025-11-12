@@ -9,7 +9,7 @@ Stream **real-time news** from Alpaca’s Market Data **News WebSocket**, normal
 ## Inputs
 
 * **Config:** `sources.alpaca_news.*`, `paths.*`, `schedule.*`
-* **Creds:** `ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY`
+* **Creds:** `ALPACA_API_KEY`, `ALPACA_API_SECRET` — WebSocket credentials (non-numbered)
 * **Symbols:** default `["SPY", "VOO"]` (≤30 free-tier cap)
 
 ## Outputs

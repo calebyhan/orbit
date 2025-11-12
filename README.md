@@ -62,17 +62,27 @@ cp .env.example .env
 ```bash
 # Alpaca (news WebSocket + REST API) - FREE tier available
 # Sign up at: https://alpaca.markets
-# Single key mode (WebSocket only):
+
+# WebSocket key (for real-time news streaming):
+# Used by: orbit ingest news
 ALPACA_API_KEY=your_alpaca_api_key
 ALPACA_API_SECRET=your_alpaca_api_secret
 
-# Multi-key mode (for historical backfill 5x throughput):
-# REST API: ~200 RPM per key, 5 keys = ~1,000 RPM combined
+# REST API keys (for historical backfill only):
+# Used by: orbit ingest news-backfill
+# Multi-key support: ~200 RPM per key, 5 keys = ~1,000 RPM combined (5x throughput)
+# You can use the same key for both WebSocket and REST, or separate keys for rate limit isolation
 ALPACA_API_KEY_1=your_alpaca_key_1
 ALPACA_API_SECRET_1=your_alpaca_secret_1
-ALPACA_API_KEY_2=your_alpaca_key_2
-ALPACA_API_SECRET_2=your_alpaca_secret_2
-# ... up to _5 for maximum throughput
+# Optional: Add more keys for faster historical data fetching
+# ALPACA_API_KEY_2=your_alpaca_key_2
+# ALPACA_API_SECRET_2=your_alpaca_secret_2
+# ALPACA_API_KEY_3=your_alpaca_key_3
+# ALPACA_API_SECRET_3=your_alpaca_secret_3
+# ALPACA_API_KEY_4=your_alpaca_key_4
+# ALPACA_API_SECRET_4=your_alpaca_secret_4
+# ALPACA_API_KEY_5=your_alpaca_key_5
+# ALPACA_API_SECRET_5=your_alpaca_secret_5
 
 # Gemini API (sentiment analysis) - FREE tier: 1,000 RPD per key
 # Get keys at: https://makersuite.google.com/app/apikey
@@ -128,8 +138,11 @@ python -m orbit.ingest.llm_gemini  # Programmatic API
 **Multi-key rotation example:**
 
 ```bash
-# Alpaca REST API (historical backfill) automatically uses all configured keys
-# ALPACA_API_KEY_1/SECRET_1 through _5
+# WebSocket real-time ingestion (orbit ingest news)
+# Uses: ALPACA_API_KEY and ALPACA_API_SECRET (non-numbered)
+
+# REST API historical backfill (orbit ingest news-backfill)
+# Uses: ALPACA_API_KEY_1/SECRET_1 through _5
 # Default: round-robin strategy, ~200 RPM per key
 # With 5 keys: ~1,000 RPM combined throughput (5x faster backfill)
 

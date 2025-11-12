@@ -115,8 +115,9 @@ News WebSocket Not Working?
         │
         ├─> "Auth failed"
         │   └─> Fix: Invalid API keys
-        │       ├─> Verify ALPACA_API_KEY_ID in .env
-        │       ├─> Verify ALPACA_API_SECRET_KEY in .env
+        │       ├─> Verify ALPACA_API_KEY in .env (WebSocket)
+        │       ├─> Verify ALPACA_API_SECRET in .env (WebSocket)
+        │       ├─> Verify ALPACA_API_KEY_1 in .env (REST API backfill)
         │       └─> Test keys: curl -u $KEY:$SECRET https://data.alpaca.markets/v1beta1/news
         │
         ├─> "WebSocket closed unexpectedly"

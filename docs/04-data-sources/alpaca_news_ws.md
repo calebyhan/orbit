@@ -8,7 +8,8 @@ Define how ORBIT consumes **real-time news** from Alpaca’s Market Data **News 
 
 ## Access & auth
 
-* **Auth:** `ALPACA_API_KEY`, `ALPACA_API_SECRET` (see `docs/03-config/env_keys.md`).
+* **Auth:** `ALPACA_API_KEY`, `ALPACA_API_SECRET` — WebSocket credentials (see `docs/03-config/env_keys.md`).
+* **Note:** Historical backfill via REST API uses separate numbered keys (`ALPACA_API_KEY_1-5`) for rate limit isolation.
 * **Endpoint:** `wss://stream.data.alpaca.markets/v1beta1/news` (subject to provider changes; keep configurable via `orbit.yaml`).
 * **Symbols:** start with `["SPY", "VOO"]`. Basic tier cap ≈ **30** concurrent symbols; enforce via config.
 

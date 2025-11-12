@@ -28,7 +28,8 @@ DEFAULT_PAGE_SIZE = 50  # Max allowed by Alpaca
 def get_alpaca_creds_for_rest() -> tuple[str, str]:
     """Get Alpaca API credentials from environment for REST API.
 
-    Tries multi-key pattern first (ALPACA_API_KEY_1), falls back to single key.
+    Uses numbered key pattern (ALPACA_API_KEY_1) for historical backfill.
+    This is separate from the WebSocket key (ALPACA_API_KEY) to allow rate limit isolation.
 
     Returns:
         Tuple of (api_key, api_secret)
@@ -36,19 +37,16 @@ def get_alpaca_creds_for_rest() -> tuple[str, str]:
     Raises:
         ValueError: If credentials not found in environment
     """
-    # Try multi-key pattern first
+    # Use numbered key pattern for REST API historical backfill
     api_key = os.getenv("ALPACA_API_KEY_1")
     api_secret = os.getenv("ALPACA_API_SECRET_1")
 
-    # Fallback to single key pattern (used by WebSocket)
-    if not api_key:
-        api_key = os.getenv("ALPACA_API_KEY")
-        api_secret = os.getenv("ALPACA_API_SECRET")
-
     if not api_key or not api_secret:
         raise ValueError(
-            "Alpaca credentials not found. Set ALPACA_API_KEY and ALPACA_API_SECRET in .env\n"
-            "Or for multi-key: ALPACA_API_KEY_1/ALPACA_API_SECRET_1 through _5 for 5x throughput"
+            "Alpaca REST API credentials not found.\n"
+            "Set ALPACA_API_KEY_1 and ALPACA_API_SECRET_1 in .env for historical backfill.\n"
+            "For multi-key: Set up to ALPACA_API_KEY_5/ALPACA_API_SECRET_5 for 5x throughput.\n"
+            "Note: WebSocket (orbit ingest news) uses ALPACA_API_KEY/SECRET (non-numbered)."
         )
 
     return api_key, api_secret

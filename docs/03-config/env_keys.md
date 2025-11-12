@@ -1,6 +1,6 @@
 # ORBIT — Environment Keys
 
-*Last edited: 2025-11-10*
+*Last edited: 2025-11-11*
 
 ## Easy Setup: Using .env File (Recommended)
 
@@ -14,9 +14,14 @@ cp .env.example .env
 
 Your `.env` file:
 ```bash
-# Alpaca
-ALPACA_API_KEY_ID=your_alpaca_key_id
-ALPACA_API_SECRET_KEY=your_alpaca_secret
+# Alpaca WebSocket (real-time news)
+ALPACA_API_KEY=your_alpaca_api_key
+ALPACA_API_SECRET=your_alpaca_api_secret
+
+# Alpaca REST API (historical backfill)
+ALPACA_API_KEY_1=your_alpaca_key_1
+ALPACA_API_SECRET_1=your_alpaca_secret_1
+# Optional: Add keys 2-5 for faster backfill
 
 # Reddit
 REDDIT_CLIENT_ID=your_reddit_client_id
@@ -42,16 +47,37 @@ If you prefer not to use `.env`, you can manually export environment variables:
 
 Set these as environment variables before running the pipeline. Never hardcode secrets into the repo.
 
-## Alpaca News (WebSocket)
+## Alpaca News (WebSocket and REST API)
 
-* `ALPACA_API_KEY_ID`
-* `ALPACA_API_SECRET_KEY`
+**WebSocket (real-time streaming):**
+* `ALPACA_API_KEY` — Used by `orbit ingest news`
+* `ALPACA_API_SECRET`
+
+**REST API (historical backfill):**
+* `ALPACA_API_KEY_1` — Used by `orbit ingest news-backfill`
+* `ALPACA_API_SECRET_1`
+* `ALPACA_API_KEY_2` through `ALPACA_API_KEY_5` (optional, for multi-key rotation)
+* `ALPACA_API_SECRET_2` through `ALPACA_API_SECRET_5`
+
+**Separation rationale:**
+- WebSocket connection is long-lived and uses a dedicated key
+- REST API for historical data can use multiple keys for 5x throughput (~1,000 RPM combined)
+- You can use the same key for both, or separate keys to isolate rate limits
 
 **Export examples** (PowerShell / bash):
 
 ```
-$env:ALPACA_API_KEY_ID="..."; $env:ALPACA_API_SECRET_KEY="..."
-export ALPACA_API_KEY_ID=... ALPACA_API_SECRET_KEY=...
+# WebSocket (required for real-time)
+export ALPACA_API_KEY="..." ALPACA_API_SECRET="..."
+
+# REST API (required for historical backfill)
+export ALPACA_API_KEY_1="..." ALPACA_API_SECRET_1="..."
+
+# Optional: Add more REST keys for faster backfill (5x throughput)
+export ALPACA_API_KEY_2="..." ALPACA_API_SECRET_2="..."
+export ALPACA_API_KEY_3="..." ALPACA_API_SECRET_3="..."
+export ALPACA_API_KEY_4="..." ALPACA_API_SECRET_4="..."
+export ALPACA_API_KEY_5="..." ALPACA_API_SECRET_5="..."
 ```
 
 ## Reddit API (official OAuth)
