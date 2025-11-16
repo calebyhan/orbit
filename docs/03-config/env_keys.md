@@ -1,6 +1,6 @@
 # ORBIT — Environment Keys
 
-*Last edited: 2025-11-11*
+*Last edited: 2025-11-15*
 
 ## Easy Setup: Using .env File (Recommended)
 
@@ -49,35 +49,62 @@ Set these as environment variables before running the pipeline. Never hardcode s
 
 ## Alpaca News (WebSocket and REST API)
 
-**WebSocket (real-time streaming):**
-* `ALPACA_API_KEY` — Used by `orbit ingest news`
-* `ALPACA_API_SECRET`
+**Minimum required (single key for both):**
+```bash
+# Use the same key for WebSocket AND REST backfill (simplest setup)
+ALPACA_API_KEY=your_key
+ALPACA_API_SECRET=your_secret
 
-**REST API (historical backfill):**
-* `ALPACA_API_KEY_1` — Used by `orbit ingest news-backfill`
-* `ALPACA_API_SECRET_1`
-* `ALPACA_API_KEY_2` through `ALPACA_API_KEY_5` (optional, for multi-key rotation)
-* `ALPACA_API_SECRET_2` through `ALPACA_API_SECRET_5`
+# OR use separate keys for rate limit isolation:
+# WebSocket (real-time streaming):
+ALPACA_API_KEY=your_ws_key
+ALPACA_API_SECRET=your_ws_secret
 
-**Separation rationale:**
-- WebSocket connection is long-lived and uses a dedicated key
-- REST API for historical data can use multiple keys for 5x throughput (~1,000 RPM combined)
-- You can use the same key for both, or separate keys to isolate rate limits
+# REST API (historical backfill):
+ALPACA_API_KEY_1=your_rest_key
+ALPACA_API_SECRET_1=your_rest_secret
+```
+
+**Timeline for 10 years of SPY/VOO news backfill:**
+- 1 key: ~1-2 hours (sufficient for initial bootstrap)
+- 5 keys: ~15-20 minutes (optional optimization)
+
+**Optional: Multi-key for 5x faster backfill:**
+```bash
+# Add up to 5 keys for REST API historical backfill
+ALPACA_API_KEY_2=your_key_2
+ALPACA_API_SECRET_2=your_secret_2
+ALPACA_API_KEY_3=your_key_3
+ALPACA_API_SECRET_3=your_secret_3
+ALPACA_API_KEY_4=your_key_4
+ALPACA_API_SECRET_4=your_secret_4
+ALPACA_API_KEY_5=your_key_5
+ALPACA_API_SECRET_5=your_secret_5
+```
+
+**Key separation rationale:**
+- **WebSocket** (`ALPACA_API_KEY`): Long-lived connection for daily real-time news
+- **REST API** (`ALPACA_API_KEY_1-5`): Burst historical backfill (can use multiple keys)
+- You can use the **same key for both**, or **separate keys** to isolate rate limits
+- Multi-key only needed if you want <30min bootstrap or frequent re-ingestion
 
 **Export examples** (PowerShell / bash):
 
-```
-# WebSocket (required for real-time)
-export ALPACA_API_KEY="..." ALPACA_API_SECRET="..."
+```bash
+# Simplest: Single key for everything
+export ALPACA_API_KEY="your_key" ALPACA_API_SECRET="your_secret"
 
-# REST API (required for historical backfill)
-export ALPACA_API_KEY_1="..." ALPACA_API_SECRET_1="..."
+# Recommended: Separate WebSocket and REST keys
+# WebSocket (real-time, required for daily ingestion)
+export ALPACA_API_KEY="ws_key" ALPACA_API_SECRET="ws_secret"
+
+# REST API (historical backfill, one-time bootstrap)
+export ALPACA_API_KEY_1="rest_key" ALPACA_API_SECRET_1="rest_secret"
 
 # Optional: Add more REST keys for faster backfill (5x throughput)
-export ALPACA_API_KEY_2="..." ALPACA_API_SECRET_2="..."
-export ALPACA_API_KEY_3="..." ALPACA_API_SECRET_3="..."
-export ALPACA_API_KEY_4="..." ALPACA_API_SECRET_4="..."
-export ALPACA_API_KEY_5="..." ALPACA_API_SECRET_5="..."
+export ALPACA_API_KEY_2="key2" ALPACA_API_SECRET_2="secret2"
+export ALPACA_API_KEY_3="key3" ALPACA_API_SECRET_3="secret3"
+# ... up to _5
 ```
 
 ## Reddit API (official OAuth)

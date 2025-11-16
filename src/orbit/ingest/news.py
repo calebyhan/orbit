@@ -314,7 +314,28 @@ class AlpacaNewsClient:
     def _on_message(self, ws, message):
         """WebSocket on_message callback."""
         try:
-            msg = json.loads(message)
+            data = json.loads(message)
+            
+            # Handle list of messages (batch)
+            if isinstance(data, list):
+                for msg in data:
+                    self._process_single_message(ws, msg)
+                return
+            
+            # Handle single message
+            self._process_single_message(ws, data)
+            
+        except Exception as e:
+            print(f"✗ Error processing message: {e}")
+
+    def _process_single_message(self, ws, msg: dict):
+        """Process a single WebSocket message.
+        
+        Args:
+            ws: WebSocket connection
+            msg: Parsed message dict
+        """
+        try:
             msg_type = msg.get("T")
 
             # Handle connection messages
@@ -367,7 +388,7 @@ class AlpacaNewsClient:
                     self._flush_buffer()
 
         except Exception as e:
-            print(f"✗ Error processing message: {e}")
+            print(f"✗ Error processing single message: {e}")
 
     def _on_error(self, ws, error):
         """WebSocket on_error callback."""

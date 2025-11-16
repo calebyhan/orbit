@@ -1,6 +1,6 @@
 # ORBIT
 
-*Last edited: 2025-11-11*
+*Last edited: 2025-11-15*
 
 **What is ORBIT?**
 ORBIT (Observational Reasoning & Behavior-Integrated Trading) is a free‑first, daily **tri‑modal** alpha engine for the S&P 500 ETF (SPY/VOO).
@@ -16,6 +16,8 @@ One symbol, fewer mapping errors, fast iteration. Text impact is **gated** so it
 **Current Status:** M1 — Data gathering + Gemini integration (75% complete)
 
 ### Quickstart
+
+**New to ORBIT?** See the comprehensive [Developer Instructions](docs/INSTRUCTIONS/README.md) for detailed setup and usage guides.
 
 Get up and running quickly — these steps assume a Unix-like shell (bash) and Python 3.11+.
 
@@ -173,6 +175,44 @@ pytest tests/ -v
 - M0 sample data in `data/sample/` is version controlled and runs entirely offline
 - For production use, set `ORBIT_DATA_DIR=/srv/orbit/data` in `.env`
 - See `docs/02-architecture/workspace_layout.md` for data directory structure
+
+---
+
+## Documentation
+
+### For Developers
+
+Comprehensive guides for setting up and using ORBIT:
+
+- **[Developer Instructions](docs/INSTRUCTIONS/README.md)** - Start here! Complete onboarding guide
+  - [Repository Setup](docs/INSTRUCTIONS/01_repository_setup.md) - Clone, install, verify
+  - [API Keys Configuration](docs/INSTRUCTIONS/03_api_keys_configuration.md) - Get API keys (Alpaca, Gemini)
+  - [CLI Commands Reference](docs/INSTRUCTIONS/02_cli_commands.md) - All available commands
+  - [Historical Backfill Guide](docs/INSTRUCTIONS/04_historical_backfill.md) - Bootstrap 10 years of news data
+  - [Development Workflow](docs/INSTRUCTIONS/05_development_workflow.md) - Code standards and best practices
+  - [Testing Guidelines](docs/INSTRUCTIONS/06_testing.md) - Writing and running tests
+
+### For LLM Operators
+
+- **[CLAUDE.md](CLAUDE.md)** - Guardrails for LLM agents (Claude/ChatGPT/etc.)
+  - Golden rules: docs-first, minimal diffs, point-in-time discipline
+  - Workflow: read specs → plan → implement → verify → document
+
+### Technical Documentation
+
+Architecture, specifications, and operational guides:
+
+- **Architecture**: [docs/02-architecture/](docs/02-architecture/) - System design, dataflow, workspace layout
+- **Configuration**: [docs/03-config/](docs/03-config/) - Config specs, cutoffs, timezones
+- **Data Sources**: [docs/04-data-sources/](docs/04-data-sources/) - API specs, rate limits, compliance
+- **Ingestion**: [docs/05-ingestion/](docs/05-ingestion/) - Ingestion module specifications
+- **Features**: [docs/07-features/](docs/07-features/) - Feature engineering specs (M2)
+- **Modeling**: [docs/08-modeling/](docs/08-modeling/) - Model architecture specs (M3)
+- **Evaluation**: [docs/09-evaluation/](docs/09-evaluation/) - Backtest rules, metrics
+- **Operations**: [docs/10-operations/](docs/10-operations/) - Runbooks, monitoring, troubleshooting
+- **Roadmap**: [docs/11-roadmap/](docs/11-roadmap/) - Milestones and future plans
+
+---
 
 
 ### Design contracts (must‑follow)

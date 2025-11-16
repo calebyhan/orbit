@@ -7,6 +7,7 @@ Implements bootstrap historical data collection as documented in:
 docs/05-ingestion/bootstrap_historical_data.md
 """
 
+import json
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,7 @@ from typing import Optional
 
 import pandas as pd
 import requests
+from tqdm import tqdm
 
 from orbit import io as orbit_io
 from orbit.utils.key_rotation import KeyRotationManager, RotationStrategy
@@ -23,6 +25,35 @@ from orbit.utils.key_rotation import KeyRotationManager, RotationStrategy
 # Alpaca REST API configuration
 ALPACA_NEWS_API_BASE = "https://data.alpaca.markets/v1beta1/news"
 DEFAULT_PAGE_SIZE = 50  # Max allowed by Alpaca
+TARGET_RPM = 190  # Target 190 RPM (safety margin below 200 limit)
+CHECKPOINT_INTERVAL = 100  # Save checkpoint every N requests
+MAX_RETRY_ATTEMPTS = 5  # Max retries for 429 errors
+
+
+def save_checkpoint(checkpoint_file: Path, data: dict) -> None:
+    """Save checkpoint data to JSON file.
+
+    Args:
+        checkpoint_file: Path to checkpoint file
+        data: Checkpoint data to save
+    """
+    with open(checkpoint_file, 'w') as f:
+        json.dump(data, f, indent=2, default=str)
+
+
+def load_checkpoint(checkpoint_file: Path) -> Optional[dict]:
+    """Load checkpoint data from JSON file.
+
+    Args:
+        checkpoint_file: Path to checkpoint file
+
+    Returns:
+        Checkpoint data if file exists, None otherwise
+    """
+    if checkpoint_file.exists():
+        with open(checkpoint_file, 'r') as f:
+            return json.load(f)
+    return None
 
 
 def get_alpaca_creds_for_rest() -> tuple[str, str]:
@@ -154,13 +185,15 @@ def backfill_news_date_range(
     end_date: str,
     run_id: Optional[str] = None,
     use_multi_key: bool = True,
-    quota_rpm: int = 200,
+    quota_rpm: int = TARGET_RPM,
     write_raw: bool = True,
+    resume: bool = True,
 ) -> dict:
     """Backfill historical news for a date range using Alpaca REST API.
 
     This is the main entrypoint for historical news backfill.
     Supports multi-key rotation for 5x throughput (1,000 RPM vs 200 RPM).
+    Optimized for single-key reliability with checkpoint/resume capability.
 
     Args:
         symbols: List of symbols to fetch news for (e.g., ["SPY", "VOO"])
@@ -168,8 +201,9 @@ def backfill_news_date_range(
         end_date: End date in YYYY-MM-DD format
         run_id: Unique run identifier (auto-generated if None)
         use_multi_key: Whether to use multi-key rotation (default: True)
-        quota_rpm: Requests per minute per key (default: 200 for free tier)
+        quota_rpm: Requests per minute per key (default: 190 for safety margin)
         write_raw: Whether to write raw data to disk
+        resume: Whether to resume from checkpoint if available (default: True)
 
     Returns:
         Dict with statistics:
@@ -177,17 +211,30 @@ def backfill_news_date_range(
         - requests_made: Total API requests
         - date_range: Date range covered
         - run_id: Run identifier
+        - elapsed_time: Total time elapsed in seconds
 
     Note:
         Data is written to ORBIT_DATA_DIR/raw/news/date=YYYY-MM-DD/news.parquet
+        Checkpoint saved to .backfill_checkpoint_{run_id}.json every 100 requests
         Set ALPACA_API_KEY_1 through ALPACA_API_KEY_5 for multi-key mode
-        Or use ALPACA_API_KEY/ALPACA_API_SECRET for single key mode
+        Single key mode: Takes ~1-2 hours for 10 years of SPY/VOO news
     """
     # Generate run_id if not provided
     if run_id is None:
         run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_backfill")
 
-    print(f"\nStarting Alpaca news backfill (run_id: {run_id})")
+    # Checkpoint file
+    checkpoint_file = Path(f".backfill_checkpoint_{run_id}.json")
+
+    # Try to load checkpoint
+    checkpoint = None
+    if resume and checkpoint_file.exists():
+        checkpoint = load_checkpoint(checkpoint_file)
+        print(f"\n✓ Resuming from checkpoint: {checkpoint_file}")
+        print(f"  Previous progress: {checkpoint['articles_fetched']} articles, {checkpoint['requests_made']} requests")
+    else:
+        print(f"\nStarting Alpaca news backfill (run_id: {run_id})")
+
     print(f"Date range: {start_date} to {end_date}")
     print(f"Symbols: {symbols}")
 
@@ -201,6 +248,13 @@ def backfill_news_date_range(
     if end_dt.tzinfo is None:
         end_dt = end_dt.replace(tzinfo=timezone.utc)
 
+    # Resume from checkpoint if available
+    if checkpoint:
+        resume_date = datetime.fromisoformat(checkpoint['last_date'])
+        if resume_date > start_dt:
+            start_dt = resume_date
+            print(f"  Resuming from: {start_dt.date()}")
+
     # Initialize key manager or single key
     if use_multi_key:
         try:
@@ -212,8 +266,9 @@ def backfill_news_date_range(
                 quota_rpd=None,  # No daily quota tracking for REST API
                 # Could add RPM tracking in future
             )
-            print(f"✓ Using multi-key mode ({key_manager.num_keys} keys loaded)")
-            print(f"  Combined throughput: ~{quota_rpm * key_manager.num_keys} RPM")
+            num_keys = len(key_manager.keys)
+            print(f"✓ Using multi-key mode ({num_keys} keys loaded)")
+            print(f"  Combined throughput: ~{quota_rpm * num_keys} RPM")
         except ValueError:
             # Fall back to single key
             print("⚠ Multi-key mode requested but only single key found")
@@ -226,14 +281,26 @@ def backfill_news_date_range(
         print(f"✓ Using single key mode")
         print(f"  Throughput: ~{quota_rpm} RPM")
 
-    # Statistics
-    articles_fetched = 0
-    requests_made = 0
+    # Statistics (restore from checkpoint if resuming)
+    articles_fetched = checkpoint['articles_fetched'] if checkpoint else 0
+    requests_made = checkpoint['requests_made'] if checkpoint else 0
     current_articles = []
+    start_time = time.time()
+    last_request_time = 0.0  # For rate limiting
+    request_interval = 60.0 / quota_rpm  # Seconds between requests
 
     # Iterate through date range (daily chunks to respect pagination)
     current_date = start_dt
     delta = timedelta(days=1)
+    total_days = (end_dt - start_dt).days
+
+    # Progress bar
+    pbar = tqdm(
+        total=total_days,
+        desc="Backfill progress",
+        unit="day",
+        initial=(start_dt - datetime.fromisoformat(start_date.replace("Z", "+00:00")).replace(tzinfo=timezone.utc)).days if checkpoint else 0,
+    )
 
     while current_date < end_dt:
         next_date = min(current_date + delta, end_dt)
@@ -242,8 +309,6 @@ def backfill_news_date_range(
         start_iso = current_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         end_iso = next_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        print(f"\nFetching {current_date.date()}...")
-
         # Fetch all pages for this day
         page_token = None
         page_num = 0
@@ -251,30 +316,66 @@ def backfill_news_date_range(
         while True:
             page_num += 1
 
-            try:
-                # Get API key (rotate if multi-key)
-                if use_multi_key:
-                    key = key_manager.get_next_key()
-                    api_key = key.key_value
-                    # Extract secret from environment (keys are stored as KEY:SECRET pairs or separate)
-                    api_secret = os.getenv(key.key_name.replace("KEY", "SECRET"))
-                    if not api_secret:
-                        # Try underscore pattern
-                        secret_name = key.key_name.replace("API_KEY", "API_SECRET")
-                        api_secret = os.getenv(secret_name)
+            # Retry loop for 429 errors
+            retry_count = 0
+            retry_delay = 60  # Start with 60s backoff
 
-                # Fetch page
-                response = fetch_news_page(
-                    symbols=symbols,
-                    start=start_iso,
-                    end=end_iso,
-                    api_key=api_key,
-                    api_secret=api_secret,
-                    page_token=page_token,
-                )
+            while retry_count < MAX_RETRY_ATTEMPTS:
+                try:
+                    # Precise rate limiting: ensure we don't exceed quota_rpm
+                    time_since_last = time.time() - last_request_time
+                    if time_since_last < request_interval:
+                        time.sleep(request_interval - time_since_last)
 
-                requests_made += 1
+                    # Get API key (rotate if multi-key)
+                    if use_multi_key:
+                        key = key_manager.get_next_key()
+                        api_key = key.key_value
+                        # Extract secret from environment (keys are stored as KEY:SECRET pairs or separate)
+                        api_secret = os.getenv(key.key_name.replace("KEY", "SECRET"))
+                        if not api_secret:
+                            # Try underscore pattern
+                            secret_name = key.key_name.replace("API_KEY", "API_SECRET")
+                            api_secret = os.getenv(secret_name)
 
+                    # Fetch page
+                    last_request_time = time.time()
+                    response = fetch_news_page(
+                        symbols=symbols,
+                        start=start_iso,
+                        end=end_iso,
+                        api_key=api_key,
+                        api_secret=api_secret,
+                        page_token=page_token,
+                    )
+
+                    requests_made += 1
+                    break  # Success, exit retry loop
+
+                except requests.HTTPError as e:
+                    if e.response.status_code == 429:
+                        # Rate limited - exponential backoff
+                        retry_count += 1
+                        if retry_count >= MAX_RETRY_ATTEMPTS:
+                            pbar.write(f"  ✗ Max retries reached for 429 errors, skipping day")
+                            break
+                        pbar.write(f"  ⚠ Rate limited (429), attempt {retry_count}/{MAX_RETRY_ATTEMPTS}, backing off {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    else:
+                        pbar.write(f"  ✗ HTTP error: {e}")
+                        break
+                except Exception as e:
+                    pbar.write(f"  ✗ Error fetching page: {e}")
+                    break
+
+            # Check if we broke out of retry loop without success
+            if retry_count >= MAX_RETRY_ATTEMPTS:
+                break  # Skip this day
+
+            # Process response (only if we successfully fetched)
+            if retry_count < MAX_RETRY_ATTEMPTS:
                 # Process articles
                 articles = response.get("news", [])
                 if not articles:
@@ -288,32 +389,33 @@ def backfill_news_date_range(
 
                 articles_fetched += len(articles)
 
-                print(f"  Page {page_num}: {len(articles)} articles (total: {articles_fetched})")
+                # Update progress bar
+                pbar.set_postfix({
+                    'articles': articles_fetched,
+                    'requests': requests_made,
+                    'rpm': f"{requests_made / ((time.time() - start_time) / 60):.1f}",
+                })
 
                 # Check for next page
                 page_token = response.get("next_page_token")
                 if not page_token:
                     break
 
-                # Rate limiting: simple delay between requests
-                # TODO: Implement proper RPM tracking
-                time.sleep(60 / quota_rpm)  # Spread requests evenly
-
-            except requests.HTTPError as e:
-                if e.response.status_code == 429:
-                    # Rate limited - backoff
-                    print(f"  ⚠ Rate limited, backing off 60s...")
-                    time.sleep(60)
-                    continue
-                else:
-                    print(f"  ✗ HTTP error: {e}")
-                    break
-            except Exception as e:
-                print(f"  ✗ Error fetching page: {e}")
-                break
+                # Save checkpoint periodically
+                if requests_made % CHECKPOINT_INTERVAL == 0:
+                    save_checkpoint(checkpoint_file, {
+                        'run_id': run_id,
+                        'last_date': current_date.isoformat(),
+                        'articles_fetched': articles_fetched,
+                        'requests_made': requests_made,
+                        'symbols': symbols,
+                    })
 
         # Move to next day
         current_date = next_date
+        pbar.update(1)
+
+    pbar.close()
 
     # Write collected articles to disk
     if write_raw and current_articles:
@@ -332,11 +434,21 @@ def backfill_news_date_range(
             orbit_io.write_parquet(group.drop(columns=["date"]), path, overwrite=False)
             print(f"  → {date_str}: {len(group)} articles")
 
+    # Calculate elapsed time
+    elapsed_time = time.time() - start_time
+    elapsed_str = f"{elapsed_time / 3600:.2f}h" if elapsed_time > 3600 else f"{elapsed_time / 60:.1f}m"
+
+    # Remove checkpoint on successful completion
+    if checkpoint_file.exists():
+        checkpoint_file.unlink()
+
     # Summary
     print("\n" + "="*60)
     print("Backfill complete!")
     print(f"  Articles fetched: {articles_fetched}")
     print(f"  API requests: {requests_made}")
+    print(f"  Elapsed time: {elapsed_str}")
+    print(f"  Average rate: {requests_made / (elapsed_time / 60):.1f} RPM")
     print(f"  Date range: {start_date} to {end_date}")
     print(f"  Run ID: {run_id}")
     print("="*60)
@@ -344,6 +456,7 @@ def backfill_news_date_range(
     return {
         "articles_fetched": articles_fetched,
         "requests_made": requests_made,
+        "elapsed_time": elapsed_time,
         "date_range": f"{start_date} to {end_date}",
         "run_id": run_id,
     }

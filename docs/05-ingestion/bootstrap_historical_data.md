@@ -1,6 +1,6 @@
 # ORBIT — Bootstrap: Historical Data Collection
 
-*Last edited: 2025-11-11*
+*Last edited: 2025-11-15*
 
 ## Purpose
 
@@ -170,9 +170,9 @@ def scrape_yahoo_news(symbol, start_date, end_date):
 
 ### Bootstrap Process (Implemented in M1)
 
-**Status**: ✅ Implemented in M1
+**Status**: ✅ Implemented in M1 with single-key optimization
 
-**Implementation**: Option 1 (Alpaca REST API) with multi-key rotation support
+**Implementation**: Option 1 (Alpaca REST API) with optional multi-key rotation
 
 **Module**: `src/orbit/ingest/news_backfill.py` with logic for:
 
@@ -180,30 +180,77 @@ def scrape_yahoo_news(symbol, start_date, end_date):
 2. ✅ Pagination handling for Alpaca REST API
 3. ✅ Normalization to same schema as `news_alpaca_ws_ingest.md`
 4. ✅ Write to `data/raw/news/date=YYYY-MM-DD/news_backfill.parquet`
-5. ✅ Rate limiting (simple delay: 60/quota_rpm between requests)
-6. ✅ Retry logic with 429 backoff handling
-7. ✅ Multi-key rotation support (ALPACA_API_KEY_1-5 for 5x throughput)
-8. ✅ Statistics tracking (articles fetched, requests made, date range)
+5. ✅ Precise rate limiting (190 RPM target for safety margin)
+6. ✅ Exponential backoff retry logic for 429 errors (max 5 attempts)
+7. ✅ Checkpoint/resume system (saves every 100 requests, auto-resumes on restart)
+8. ✅ Progress bar with live statistics (articles, requests, RPM, ETA)
+9. ✅ Multi-key rotation support (ALPACA_API_KEY_1-5 for 5x throughput, optional)
+10. ✅ Statistics tracking (articles fetched, requests made, elapsed time, average RPM)
 
 **CLI command**:
 
 ```bash
-# REST API backfill with multi-key rotation
+# Single-key backfill (recommended for initial bootstrap)
 orbit ingest news-backfill \
-  --start 2024-01-01 \
-  --end 2024-12-31 \
+  --start 2015-01-01 \
+  --end 2025-11-15 \
   --symbols SPY VOO
 
-# Note: Requires ALPACA_API_KEY_1/SECRET_1 (and optionally _2-_5) in .env
+# Note: Requires ALPACA_API_KEY_1/SECRET_1 in .env
 # WebSocket ingestion (orbit ingest news) uses separate ALPACA_API_KEY/SECRET
 ```
 
-**Multi-key rotation**:
+### Single-Key Timeline (Realistic for SPY/VOO)
+
+For 10 years of historical news (2015-2025):
+
+**Volume estimate:**
+- ~130 articles/day × 3,650 days = ~474,500 articles
+- 50 articles per request = ~9,490 requests required
+- **Theoretical minimum**: 47.5 minutes (@ 200 RPM perfect)
+- **Realistic time**: **1-2 hours** (includes 429 backoff, retries, network overhead)
+
+**System features for reliability:**
+- ✅ Checkpoint saves every 100 requests (`.backfill_checkpoint_{run_id}.json`)
+- ✅ Auto-resume on restart (picks up from last checkpoint)
+- ✅ Progress bar with live stats (articles fetched, RPM, ETA)
+- ✅ Precise rate limiting (190 RPM target for safety margin)
+- ✅ Exponential backoff on 429 errors (60s → 120s → 240s, max 5 attempts)
+
+**Recommended workflow:**
+```bash
+# Run in tmux/screen for reliability
+tmux new -s backfill
+
+# Activate venv and run backfill
+source .venv/bin/activate
+orbit ingest news-backfill --start 2015-01-01 --end $(date +%Y-%m-%d) --symbols SPY VOO
+
+# Detach: Ctrl+B, then D
+# Reattach later: tmux attach -t backfill
+```
+
+If interrupted, just re-run the same command - it will resume from the last checkpoint.
+
+### Multi-Key Optimization (Optional)
+
+For faster backfill (<30 minutes), add multiple Alpaca API keys:
+
+**Setup:**
 - Set `ALPACA_API_KEY_1` through `ALPACA_API_KEY_5` in `.env` (REST API credentials)
 - Set `ALPACA_API_SECRET_1` through `ALPACA_API_SECRET_5` in `.env`
 - Automatically uses round-robin strategy
-- ~200 RPM per key → ~1,000 RPM with 5 keys (5x throughput)
-- **Note:** WebSocket real-time ingestion (`orbit ingest news`) uses separate non-numbered keys (`ALPACA_API_KEY`/`ALPACA_API_SECRET`) for rate limit isolation
+
+**Performance:**
+- 1 key: ~1-2 hours (sufficient for initial bootstrap)
+- 5 keys: ~15-20 minutes (5x throughput: ~950 RPM combined)
+
+**When to use multi-key:**
+- Need <30min bootstrap time
+- Frequent re-ingestion required
+- Large-scale backtesting research
+
+**Note:** WebSocket real-time ingestion (`orbit ingest news`) uses separate non-numbered keys (`ALPACA_API_KEY`/`ALPACA_API_SECRET`) for rate limit isolation
 
 ---
 
