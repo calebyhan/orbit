@@ -1,0 +1,1255 @@
+{
+    "data": [
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 1,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 2,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 0,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 3,
+            "Positive Amount": 3,
+            "Negative Amount": 2,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 4,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 5,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 8,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 11,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 9,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 12,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 13,
+            "Positive Amount": 9,
+            "Negative Amount": 9,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 7,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 14,
+            "Positive Amount": 0,
+            "Negative Amount": 4,
+            "Neutral Amount": 7
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 15,
+            "Positive Amount": 10,
+            "Negative Amount": 8,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 16,
+            "Positive Amount": 2,
+            "Negative Amount": 6,
+            "Neutral Amount": 7
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 17,
+            "Positive Amount": 2,
+            "Negative Amount": 7,
+            "Neutral Amount": 11
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 18,
+            "Positive Amount": 2,
+            "Negative Amount": 5,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 19,
+            "Positive Amount": 7,
+            "Negative Amount": 6,
+            "Neutral Amount": 7
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 20,
+            "Positive Amount": 2,
+            "Negative Amount": 2,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 21,
+            "Positive Amount": 0,
+            "Negative Amount": 3,
+            "Neutral Amount": 7
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 22,
+            "Positive Amount": 1,
+            "Negative Amount": 1,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 26,
+            "Hour": 23,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 0,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 1,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 2,
+            "Positive Amount": 5,
+            "Negative Amount": 4,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 3,
+            "Positive Amount": 1,
+            "Negative Amount": 1,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 4,
+            "Positive Amount": 3,
+            "Negative Amount": 2,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 5,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 6,
+            "Positive Amount": 2,
+            "Negative Amount": 1,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 7,
+            "Positive Amount": 3,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 8,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 9,
+            "Positive Amount": 6,
+            "Negative Amount": 8,
+            "Neutral Amount": 10
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 10,
+            "Positive Amount": 2,
+            "Negative Amount": 4,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 11,
+            "Positive Amount": 2,
+            "Negative Amount": 3,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 12,
+            "Positive Amount": 3,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 13,
+            "Positive Amount": 1,
+            "Negative Amount": 5,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 14,
+            "Positive Amount": 1,
+            "Negative Amount": 6,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 15,
+            "Positive Amount": 0,
+            "Negative Amount": 10,
+            "Neutral Amount": 7
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 16,
+            "Positive Amount": 2,
+            "Negative Amount": 6,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 17,
+            "Positive Amount": 3,
+            "Negative Amount": 1,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 18,
+            "Positive Amount": 2,
+            "Negative Amount": 1,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 19,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 20,
+            "Positive Amount": 2,
+            "Negative Amount": 5,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 21,
+            "Positive Amount": 2,
+            "Negative Amount": 12,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 22,
+            "Positive Amount": 1,
+            "Negative Amount": 4,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 27,
+            "Hour": 23,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 0,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 1,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 2,
+            "Positive Amount": 8,
+            "Negative Amount": 13,
+            "Neutral Amount": 10
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 3,
+            "Positive Amount": 6,
+            "Negative Amount": 3,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 4,
+            "Positive Amount": 1,
+            "Negative Amount": 9,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 5,
+            "Positive Amount": 2,
+            "Negative Amount": 4,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 6,
+            "Positive Amount": 0,
+            "Negative Amount": 2,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 8,
+            "Positive Amount": 0,
+            "Negative Amount": 3,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 7,
+            "Positive Amount": 0,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 9,
+            "Positive Amount": 2,
+            "Negative Amount": 4,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 11,
+            "Positive Amount": 2,
+            "Negative Amount": 3,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 10,
+            "Positive Amount": 0,
+            "Negative Amount": 2,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 12,
+            "Positive Amount": 2,
+            "Negative Amount": 0,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 13,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 14,
+            "Positive Amount": 3,
+            "Negative Amount": 4,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 15,
+            "Positive Amount": 4,
+            "Negative Amount": 7,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 16,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 17,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 18,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 19,
+            "Positive Amount": 2,
+            "Negative Amount": 1,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 20,
+            "Positive Amount": 2,
+            "Negative Amount": 0,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 21,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 22,
+            "Positive Amount": 2,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 28,
+            "Hour": 23,
+            "Positive Amount": 1,
+            "Negative Amount": 1,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 0,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 2,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 1,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 3,
+            "Positive Amount": 2,
+            "Negative Amount": 0,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 6,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 8,
+            "Positive Amount": 2,
+            "Negative Amount": 0,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 4,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 5,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 11,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 9,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 12,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 10,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 13,
+            "Positive Amount": 1,
+            "Negative Amount": 0,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 15,
+            "Positive Amount": 0,
+            "Negative Amount": 3,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 14,
+            "Positive Amount": 1,
+            "Negative Amount": 0,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 17,
+            "Positive Amount": 1,
+            "Negative Amount": 1,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 16,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 19,
+            "Positive Amount": 3,
+            "Negative Amount": 8,
+            "Neutral Amount": 7
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 18,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 20,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 21,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 22,
+            "Positive Amount": 0,
+            "Negative Amount": 3,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 29,
+            "Hour": 23,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 1,
+            "Positive Amount": 1,
+            "Negative Amount": 0,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 2,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 4,
+            "Positive Amount": 0,
+            "Negative Amount": 2,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 3,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 5,
+            "Positive Amount": 1,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 7,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 6,
+            "Positive Amount": 0,
+            "Negative Amount": 3,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 8,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 9,
+            "Positive Amount": 0,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 10,
+            "Positive Amount": 0,
+            "Negative Amount": 4,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 11,
+            "Positive Amount": 1,
+            "Negative Amount": 5,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 12,
+            "Positive Amount": 0,
+            "Negative Amount": 6,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 13,
+            "Positive Amount": 0,
+            "Negative Amount": 2,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 14,
+            "Positive Amount": 0,
+            "Negative Amount": 4,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 15,
+            "Positive Amount": 1,
+            "Negative Amount": 7,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 16,
+            "Positive Amount": 6,
+            "Negative Amount": 4,
+            "Neutral Amount": 11
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 17,
+            "Positive Amount": 7,
+            "Negative Amount": 15,
+            "Neutral Amount": 14
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 18,
+            "Positive Amount": 5,
+            "Negative Amount": 7,
+            "Neutral Amount": 19
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 19,
+            "Positive Amount": 4,
+            "Negative Amount": 6,
+            "Neutral Amount": 9
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 20,
+            "Positive Amount": 3,
+            "Negative Amount": 1,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 21,
+            "Positive Amount": 0,
+            "Negative Amount": 3,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 22,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 30,
+            "Hour": 23,
+            "Positive Amount": 0,
+            "Negative Amount": 4,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 0,
+            "Positive Amount": 1,
+            "Negative Amount": 5,
+            "Neutral Amount": 7
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 1,
+            "Positive Amount": 2,
+            "Negative Amount": 3,
+            "Neutral Amount": 6
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 2,
+            "Positive Amount": 0,
+            "Negative Amount": 3,
+            "Neutral Amount": 9
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 3,
+            "Positive Amount": 2,
+            "Negative Amount": 2,
+            "Neutral Amount": 4
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 4,
+            "Positive Amount": 1,
+            "Negative Amount": 3,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 5,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 6,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 7,
+            "Positive Amount": 2,
+            "Negative Amount": 0,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 8,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 9,
+            "Positive Amount": 1,
+            "Negative Amount": 1,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 11,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 12,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 13,
+            "Positive Amount": 2,
+            "Negative Amount": 1,
+            "Neutral Amount": 3
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 14,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 2
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 15,
+            "Positive Amount": 0,
+            "Negative Amount": 6,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 16,
+            "Positive Amount": 3,
+            "Negative Amount": 2,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 17,
+            "Positive Amount": 1,
+            "Negative Amount": 5,
+            "Neutral Amount": 9
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 18,
+            "Positive Amount": 2,
+            "Negative Amount": 8,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 19,
+            "Positive Amount": 0,
+            "Negative Amount": 5,
+            "Neutral Amount": 5
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 21,
+            "Positive Amount": 1,
+            "Negative Amount": 2,
+            "Neutral Amount": 1
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 22,
+            "Positive Amount": 1,
+            "Negative Amount": 4,
+            "Neutral Amount": 8
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 20,
+            "Positive Amount": 0,
+            "Negative Amount": 1,
+            "Neutral Amount": 0
+        },
+        {
+            "Year": 2024,
+            "Month": 12,
+            "Day": 31,
+            "Hour": 23,
+            "Positive Amount": 0,
+            "Negative Amount": 0,
+            "Neutral Amount": 2
+        }
+    ]
+}
