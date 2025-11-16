@@ -144,7 +144,8 @@ def fetch_news_page(
 def normalize_alpaca_rest_message(article: dict, received_at: datetime, run_id: str) -> dict:
     """Normalize Alpaca REST API article to canonical schema.
 
-    Matches the schema used by WebSocket ingestion for consistency.
+    This is the canonical normalization implementation - matches WebSocket ingestion.
+    Both produce identical schema for seamless merging of backfill + real-time data.
 
     Args:
         article: Raw article from Alpaca REST API
@@ -157,7 +158,9 @@ def normalize_alpaca_rest_message(article: dict, received_at: datetime, run_id: 
     import hashlib
     import json
 
-    # Compute message ID (same logic as WebSocket)
+    # Compute message ID (canonical logic shared with WebSocket)
+    # Primary: Use provider's 'id' field (keep as int)
+    # Fallback: SHA-1 hash of (headline + source + created_at)
     msg_id = article.get("id")
     if not msg_id:
         content = f"{article.get('headline', '')}{article.get('source', '')}{article.get('created_at', '')}"

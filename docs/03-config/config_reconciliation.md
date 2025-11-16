@@ -1,10 +1,24 @@
 # ORBIT — Configuration File Reconciliation
 
-*Last edited: 2025-11-06*
+*Last edited: 2025-11-16*
+
+> **⚠️ IMPORTANT: Current Status (M1)**
+>
+> As of M1, ORBIT uses **`.env` files only** for configuration (via python-dotenv).
+> The `orbit.yaml` configuration system documented below is **planned for M2+** but not yet implemented.
+>
+> **Current configuration method:**
+> - Copy `.env.example` to `.env`
+> - Set API keys and `ORBIT_DATA_DIR` in `.env`
+> - Run CLI commands (no YAML configuration needed)
+>
+> See [docs/03-config/env_keys.md](env_keys.md) for current setup instructions.
+
+---
 
 ## Purpose
 
-This document clarifies the **relationship**, **differences**, and **usage** of ORBIT's three configuration files:
+This document clarifies the **relationship**, **differences**, and **usage** of ORBIT's three configuration files (planned for future implementation):
 
 1. **`config_schema.yaml`** — Reference schema with all options and comments
 2. **`sample_config.yaml`** — Working minimal example (orbit.yaml)

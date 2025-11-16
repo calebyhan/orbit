@@ -1,6 +1,6 @@
 # CLI Commands Reference
 
-*Last edited: 2025-11-15*
+*Last edited: 2025-11-16*
 
 **Purpose**: Complete reference for all ORBIT CLI commands with usage examples.
 
@@ -16,6 +16,7 @@ orbit [GLOBAL_OPTIONS] COMMAND SUBCOMMAND [OPTIONS]
 
 Current commands in M1:
 - `orbit ingest` - Data ingestion from external sources
+- `orbit preprocess` - Preprocessing pipeline (cutoff, dedupe, novelty)
 - `orbit features` - Feature engineering (coming soon)
 
 ---
@@ -40,10 +41,11 @@ orbit ingest --help
 
 # Output:
 # positional arguments:
-#   {prices,news,news-backfill}
+#   {prices,news,news-backfill,social-backfill}
 #     prices              Ingest prices from Stooq (M1)
 #     news                Ingest news from Alpaca WebSocket (M1)
 #     news-backfill       Backfill historical news from Alpaca REST API (M1)
+#     social-backfill     Backfill historical Reddit posts from Arctic Shift API (M1)
 #
 # options:
 #   --local-sample        Use sample data from ./data/sample/ (M0 mode)
@@ -259,6 +261,196 @@ data/raw/news/date=2025-11-15/news.parquet
 
 ---
 
+### `orbit ingest social-backfill`
+
+**Purpose**: Fetch historical Reddit posts for backtesting.
+
+**Source**: Arctic Shift Photon Reddit API (unofficial, no API key required)
+**Date range**: User-specified start/end dates
+**Subreddits**: Configurable (default: stocks, investing, wallstreetbets)
+**Rate limit**: 3.5 req/s (empirically tested)
+**No API key**: Free, unlimited access
+
+```bash
+# Basic usage: backfill 10 years of Reddit data
+orbit ingest social-backfill \
+  --start 2015-01-01 \
+  --end 2025-11-16 \
+  --subreddits stocks investing wallstreetbets
+
+# What it does:
+# 1. Iterates day-by-day through date range
+# 2. Fetches posts matching SPY, VOO, S&P 500, or "market" terms
+# 3. Filters false positives (spy camera, supermarket, etc.)
+# 4. Saves to data/raw/social/date=YYYY-MM-DD/social.parquet
+# 5. Creates checkpoint every 100 requests
+# 6. Displays progress bar with live stats
+```
+
+**Advanced usage:**
+
+```bash
+# Backfill specific date range
+orbit ingest social-backfill \
+  --start 2024-01-01 \
+  --end 2024-12-31
+
+# Backfill specific subreddits
+orbit ingest social-backfill \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --subreddits stocks
+
+# Resume from checkpoint (auto-resumes if interrupted)
+orbit ingest social-backfill \
+  --start 2015-01-01 \
+  --end 2025-11-16
+# ✓ Resuming from checkpoint: .social_backfill_checkpoint_20251116.json
+```
+
+**Performance:**
+- **10-year backfill**: ~2.6 hours @ 3.5 req/s
+- **Rate**: 3.5 requests/second (safe rate from empirical testing)
+- **Checkpoint frequency**: Every 100 requests (auto-resume if interrupted)
+- **No API key required**: Free unlimited access
+
+**Term matching:**
+- **Matched terms**: SPY, VOO, S&P 500, S&P500, market
+- **False positive filtering**: Excludes "spy camera", "supermarket", etc.
+- **Off-topic posts**: Flagged but still collected for completeness
+
+**Output files:**
+```
+data/raw/social/date=2015-01-01/social.parquet
+data/raw/social/date=2015-01-02/social.parquet
+...
+data/raw/social/date=2025-11-16/social.parquet
+```
+
+**Best practices:**
+- Run in tmux/screen for reliability (2-3 hour runtime)
+- Trust the checkpoint system (can resume if interrupted)
+- No API key configuration needed
+- Handles removed/deleted content gracefully
+
+**Detailed spec**: [reddit_arctic_api.md](../04-data-sources/reddit_arctic_api.md)
+
+---
+
+## Preprocess Commands
+
+### `orbit preprocess`
+
+**Purpose**: Apply preprocessing pipeline to raw data.
+
+**Operations:**
+1. **Cutoff enforcement**: 15:30 ET daily boundary with safety lag
+2. **Deduplication**: Simhash-based near-duplicate detection
+3. **Novelty scoring**: 7-day reference window for novelty metrics
+
+**Input**: `data/raw/{news,social}/`
+**Output**: `data/curated/{news,social}/`
+
+```bash
+# Basic usage: preprocess all raw data
+orbit preprocess \
+  --start 2024-01-01 \
+  --end 2024-12-31
+
+# What it does:
+# 1. Applies 15:30 ET cutoff to raw news/social data
+# 2. Filters items within (T-1 15:30, T 15:30] membership window
+# 3. Deduplicates items using simhash (Hamming distance ≤3)
+# 4. Computes novelty scores vs 7-day reference corpus
+# 5. Writes to data/curated/{news,social}/date=YYYY-MM-DD/
+# 6. Adds fields: is_dupe, cluster_id, novelty, window_start_et, window_end_et
+```
+
+**Advanced usage:**
+
+```bash
+# Preprocess only news
+orbit preprocess \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --sources news
+
+# Preprocess only social
+orbit preprocess \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --sources social
+
+# Inference mode (no safety lag)
+orbit preprocess \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --inference
+
+# Custom reference window for novelty
+orbit preprocess \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --reference-window 14  # 14 days instead of default 7
+
+# Custom safety lag
+orbit preprocess \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --safety-lag 60  # 60 minutes instead of default 30
+```
+
+**Options:**
+- `--sources {news,social}` - Sources to preprocess (default: both)
+- `--reference-window N` - Days in reference window for novelty (default: 7)
+- `--safety-lag N` - Safety lag in minutes for training (default: 30)
+- `--inference` - Inference mode (no safety lag)
+
+**Cutoff discipline:**
+- **Window**: (T-1 15:30, T 15:30] ET (right-closed)
+- **Safety lag**: Drops items within 30 min of cutoff during training
+- **Timezone**: America/New_York (DST-aware)
+
+**Deduplication:**
+- **Method**: Simhash with 3-gram tokenization
+- **Threshold**: Hamming distance ≤3 for near-duplicates
+- **Clustering**: Connected components (leader = earliest item)
+- **Fields added**: `is_dupe` (bool), `cluster_id` (str)
+
+**Novelty scoring:**
+- **Reference window**: Prior 7 days (configurable)
+- **Similarity**: Normalized Hamming distance
+- **Novelty formula**: 1 - max_similarity
+- **Range**: [0, 1] where 1 = completely novel
+
+**Output fields added:**
+```python
+is_dupe: bool              # True if duplicate, False if leader
+cluster_id: str            # ID of cluster leader
+novelty: float             # [0,1] novelty score
+window_start_et: datetime  # (T-1 15:30 ET)
+window_end_et: datetime    # (T 15:30 ET)
+cutoff_applied_at: datetime  # UTC timestamp of processing
+dropped_late_count: int    # Items dropped by safety lag
+```
+
+**Performance:**
+- ~1000 items/second for deduplication
+- Reference window loaded from disk (7 days cached)
+- Progress bar shows live stats per day
+
+**Best practices:**
+- Run after completing raw data ingestion
+- Use training mode (default) for model training data
+- Use inference mode (--inference) for live/production predictions
+- Monitor novelty scores (should average 0.5-0.7 for typical news)
+
+**Detailed spec**:
+- [deduplication_novelty.md](../06-preprocessing/deduplication_novelty.md)
+- [time_alignment_cutoffs.md](../06-preprocessing/time_alignment_cutoffs.md)
+
+---
+
 ## Features Commands (M2 - Coming Soon)
 
 ### `orbit features build`
@@ -324,7 +516,17 @@ orbit ingest news-backfill \
   --end $(date +%Y-%m-%d) \
   --symbols SPY VOO
 
-# 5. Start real-time news stream (long-running)
+# 5. Backfill historical social data (one-time, ~2.6 hours)
+orbit ingest social-backfill \
+  --start 2015-01-01 \
+  --end $(date +%Y-%m-%d)
+
+# 6. Preprocess raw data (one-time, creates curated datasets)
+orbit preprocess \
+  --start 2015-01-01 \
+  --end $(date +%Y-%m-%d)
+
+# 7. Start real-time news stream (long-running)
 tmux new -s news-stream
 orbit ingest news --symbols SPY VOO
 # Detach: Ctrl+B, then D
@@ -342,6 +544,11 @@ tmux attach -t news-stream  # Should see live news flowing
 # After market close (after 16:00 ET):
 # - Update price data
 orbit ingest prices
+
+# - Preprocess yesterday's data
+orbit preprocess \
+  --start $(date -d "yesterday" +%Y-%m-%d) \
+  --end $(date +%Y-%m-%d)
 
 # - Features and modeling (coming in M2+)
 # orbit features build --incremental

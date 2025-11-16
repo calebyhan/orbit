@@ -28,7 +28,7 @@
 
 ## Recent Velocity
 
-- **Week of 2025-11-03**: +15% (M1 prices ingestion completed)
+- **Week of 2025-11-10**: +15% (M1 prices ingestion completed)
 - **Average velocity**: 15%/week
 
 ## Projected Completion

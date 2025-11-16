@@ -45,26 +45,29 @@ def get_alpaca_creds() -> tuple[str, str]:
 def compute_msg_id(msg: dict) -> str:
     """Compute unique message ID from Alpaca news message.
 
-    Primary: Use provider's 'id' field if present
-    Fallback: SHA-1 hash of (headline + source + published_at)
+    Primary: Use provider's 'id' field if present (keep as int if numeric)
+    Fallback: SHA-1 hash of (headline + source + created_at)
 
     Args:
-        msg: Normalized news message dict
+        msg: Raw Alpaca news message dict
 
     Returns:
-        Unique message ID string
+        Message ID (int if from provider, str hash if computed)
     """
-    # Try provider ID first
-    if "id" in msg and msg["id"]:
-        return str(msg["id"])
+    # Try provider ID first (keep original type - int for Alpaca)
+    msg_id = msg.get("id")
+    if msg_id:
+        return msg_id
 
-    # Fallback to content hash
-    content = f"{msg.get('headline', '')}{msg.get('source', '')}{msg.get('published_at', '')}"
+    # Fallback to content hash using created_at from raw message
+    content = f"{msg.get('headline', '')}{msg.get('source', '')}{msg.get('created_at', '')}"
     return hashlib.sha1(content.encode()).hexdigest()
 
 
 def normalize_alpaca_message(msg: dict, received_at: datetime, run_id: str) -> dict:
     """Normalize Alpaca news message to canonical schema.
+
+    Matches the schema used by REST backfill for consistency.
 
     Args:
         msg: Raw message from Alpaca WebSocket
@@ -72,11 +75,15 @@ def normalize_alpaca_message(msg: dict, received_at: datetime, run_id: str) -> d
         run_id: Unique run identifier
 
     Returns:
-        Normalized message dict matching schema
+        Normalized message dict matching news.parquet.schema.md
     """
+    # Compute msg_id from raw message (before normalization)
+    # This matches REST backfill behavior exactly
+    msg_id = compute_msg_id(msg)
+
     # Extract core fields
     normalized = {
-        "msg_id": compute_msg_id(msg),
+        "msg_id": msg_id,
         "published_at": pd.to_datetime(msg.get("created_at") or msg.get("updated_at")),
         "received_at": pd.to_datetime(received_at),
         "symbols": msg.get("symbols", []),

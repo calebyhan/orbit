@@ -1,6 +1,6 @@
 # ORBIT Developer Instructions
 
-*Last edited: 2025-11-15*
+*Last edited: 2025-11-16*
 
 **Purpose**: Comprehensive developer onboarding and usage guide for ORBIT.
 
@@ -34,6 +34,8 @@ New to ORBIT? Follow these guides in order:
 | Guide | Description | Time Required |
 |-------|-------------|---------------|
 | [04_historical_backfill.md](04_historical_backfill.md) | Fetch 10 years of historical news | 1-2 hours (single key) |
+| [02_cli_commands.md#orbit-ingest-social-backfill](02_cli_commands.md#orbit-ingest-social-backfill) | Fetch 10 years of Reddit data | ~2.6 hours |
+| [02_cli_commands.md#orbit-preprocess](02_cli_commands.md#orbit-preprocess) | Preprocess raw data (cutoff, dedupe, novelty) | Varies by dataset |
 | [02_cli_commands.md#orbit-ingest-news](02_cli_commands.md#orbit-ingest-news) | Stream real-time news | Continuous (daemon) |
 
 ### Development
@@ -70,13 +72,23 @@ orbit ingest news-backfill \
   --end $(date +%Y-%m-%d) \
   --symbols SPY VOO
 
-# 5. Start real-time news stream (run in tmux/screen)
+# 5. Backfill historical social data (~2.6 hours, no API key needed)
+orbit ingest social-backfill \
+  --start 2015-01-01 \
+  --end $(date +%Y-%m-%d)
+
+# 6. Preprocess raw data (creates curated datasets)
+orbit preprocess \
+  --start 2015-01-01 \
+  --end $(date +%Y-%m-%d)
+
+# 7. Start real-time news stream (run in tmux/screen)
 tmux new -s news-stream
 orbit ingest news --symbols SPY VOO
 # Detach: Ctrl+B, then D
 ```
 
-**Total time**: ~2-3 hours (mostly waiting for backfill)
+**Total time**: ~5-6 hours (mostly waiting for backfill)
 
 ---
 
@@ -88,6 +100,11 @@ tmux attach -t news-stream
 
 # After market close: Update prices
 orbit ingest prices
+
+# Preprocess yesterday's data
+orbit preprocess \
+  --start $(date -d "yesterday" +%Y-%m-%d) \
+  --end $(date +%Y-%m-%d)
 
 # M2+: Build features, train model, generate predictions
 # orbit features build --incremental
@@ -156,17 +173,18 @@ pytest tests/ -v -m m0
 │ • Stooq      │ (OHLCV prices, free)
 │ • Alpaca     │ (News via WebSocket/REST, free)
 │ • Gemini     │ (LLM sentiment, free)
-│ • Reddit     │ (Social posts, coming soon)
+│ • Arctic API │ (Reddit posts, free - no API key)
 └──────┬───────┘
        │
        ▼
 ┌──────────────┐
-│  Ingestion   │ (M1 - 75% complete)
+│  Ingestion   │ (M1 - ✅ Complete)
 ├──────────────┤
 │ orbit ingest prices          │ ✅ Stooq OHLCV
 │ orbit ingest news            │ ✅ Alpaca WebSocket
 │ orbit ingest news-backfill   │ ✅ Alpaca REST API
-│ llm_gemini.py                │ ✅ Sentiment scoring
+│ orbit ingest social-backfill │ ✅ Arctic Shift Reddit API
+│ llm_gemini.py                │ ✅ Sentiment scoring (multi-key)
 └──────┬───────┘
        │
        ▼
@@ -175,16 +193,27 @@ pytest tests/ -v -m m0
 ├──────────────┤
 │ data/raw/prices/     │ Parquet, by symbol
 │ data/raw/news/       │ Parquet, partitioned by date
+│ data/raw/social/     │ Parquet, partitioned by date
 │ data/raw/gemini/     │ JSONL, audit trail
 └──────┬───────┘
        │
        ▼
 ┌──────────────┐
-│Preprocessing │ (M2 - planned)
+│ Preprocess   │ (M1 - ✅ Complete)
 ├──────────────┤
-│ • Deduplication     │
-│ • Time alignment    │
-│ • Quality filters   │
+│ orbit preprocess             │ ✅ Cutoff enforcement (15:30 ET)
+│ cutoffs.py                   │ ✅ Membership windows + safety lag
+│ dedupe.py                    │ ✅ Simhash deduplication
+│ pipeline.py                  │ ✅ Novelty scoring (7-day window)
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  Curated     │
+├──────────────┤
+│ data/curated/prices/  │ EOD close prices
+│ data/curated/news/    │ Deduplicated + novelty
+│ data/curated/social/  │ Deduplicated + novelty
 └──────┬───────┘
        │
        ▼
@@ -228,7 +257,7 @@ pytest tests/ -v -m m0
 └──────────────┘
 ```
 
-**Current status**: M1 (data gathering + Gemini integration, 75% complete)
+**Current status**: M1 ✅ Complete (data gathering + Gemini integration + preprocessing)
 
 See [system_diagram.md](../02-architecture/system_diagram.md) for detailed architecture.
 
@@ -240,11 +269,17 @@ See [system_diagram.md](../02-architecture/system_diagram.md) for detailed archi
 
 ORBIT is a **backtesting framework**. All features must respect temporal ordering:
 
-- **News cutoff**: 15:30 ET (to predict next session)
+- **Daily cutoff**: 15:30 ET (strict membership window)
 - **Price cutoff**: Previous close (no intraday data)
+- **Safety lag**: 30 minutes before cutoff (training only)
 - **Feature lag**: Minimum 1 day
 
-See [cutoffs_timezones.md](../03-config/cutoffs_timezones.md)
+**Preprocessing pipeline enforces:**
+- Membership window: (T-1 15:30, T 15:30] ET
+- Drops items within 30 min of cutoff during training
+- All timestamps converted to ET (DST-aware)
+
+See [time_alignment_cutoffs.md](../06-preprocessing/time_alignment_cutoffs.md)
 
 ---
 
@@ -254,11 +289,65 @@ ORBIT combines three data modalities:
 
 1. **Prices**: Stooq OHLCV (SPY, VOO, ^SPX)
 2. **News**: Alpaca news feed with Gemini sentiment
-3. **Social**: Reddit posts (r/stocks, r/investing, r/wallstreetbets)
+3. **Social**: Reddit posts via Arctic Shift API (r/stocks, r/investing, r/wallstreetbets)
+
+**Preprocessing for text (news + social):**
+- Simhash-based deduplication (Hamming distance ≤3)
+- Novelty scoring vs 7-day reference window
+- Off-topic filtering (SPY, VOO, S&P 500, market terms)
 
 **Gating mechanism**: Text (news/social) is up-weighted only on high-volume days.
 
 See [fusion_gated_blend.md](../08-modeling/fusion_gated_blend.md)
+
+---
+
+### LLM Sentiment Workflow (Optional)
+
+**Status in M1**: Library-only, not integrated into `orbit preprocess` pipeline.
+
+ORBIT includes `llm_gemini.py` for batch sentiment scoring using Gemini 2.5 Flash-Lite:
+
+**How to use LLM scoring:**
+
+```python
+from orbit.ingest.llm_gemini import batch_score_gemini
+import pandas as pd
+
+# Load preprocessed news (after orbit preprocess)
+df = pd.read_parquet('data/curated/news/date=2024-11-05/news.parquet')
+
+# Score with Gemini (requires GEMINI_API_KEY_1 in .env)
+df_scored = batch_score_gemini(
+    items=df,
+    text_column='headline',
+    id_column='msg_id',
+    batch_size=200,
+)
+
+# Save with LLM fields (sent_llm, stance, sarcasm, certainty, toxicity)
+df_scored.to_parquet('data/curated/news/date=2024-11-05/news.parquet')
+```
+
+**Why not integrated into preprocessing pipeline?**
+- LLM scoring is optional (costs apply after free tier)
+- User may want to skip sentiment for initial backtests
+- Allows manual control over which dates to score
+- Future M2 may add `orbit llm score` CLI command
+
+**Output fields** (added to curated data):
+- `sent_llm`: Sentiment in [-1, 1] (bearish to bullish)
+- `stance`: "bull", "bear", or "neutral"
+- `sarcasm`: Boolean flag
+- `certainty`: Model confidence [0, 1]
+- `toxicity`: Toxicity score [0, 1]
+
+**When to run LLM scoring:**
+- After `orbit preprocess` (needs deduplicated headlines)
+- Before `orbit features build` (M2) if using sentiment features
+- Can run incrementally on new dates or backfill full history
+
+See [llm_gemini.py](../../src/orbit/ingest/llm_gemini.py) for full API documentation.
 
 ---
 
@@ -310,8 +399,8 @@ See [workspace_layout.md](../02-architecture/workspace_layout.md)
 |---------|---------|-----------|-------------|-----------|
 | **Stooq** | Price data (OHLCV) | FREE (no key) | 0 | ✅ Required |
 | **Alpaca** | News (WebSocket + REST) | FREE | 1-5 | ✅ Required |
-| **Gemini** | Sentiment (LLM) | 1,000 RPD/key | 1-5 | ✅ Required |
-| **Reddit** | Social posts | 60 RPM | 1 | 🚧 Coming soon |
+| **Gemini** | Sentiment (LLM) | 1,000 RPD/key | 1-5 | ✅ Optional |
+| **Arctic API** | Reddit posts | FREE (no key) | 0 | ✅ Required |
 
 **Total cost**: $0/month (all free tiers)
 

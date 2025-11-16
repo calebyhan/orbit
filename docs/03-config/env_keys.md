@@ -1,6 +1,6 @@
 # ORBIT — Environment Keys
 
-*Last edited: 2025-11-15*
+*Last edited: 2025-11-16*
 
 ## Easy Setup: Using .env File (Recommended)
 
@@ -132,14 +132,14 @@ export ALPACA_API_KEY_3="key3" ALPACA_API_SECRET_3="secret3"
 
 **Usage:**
 * Required for all sentiment analysis (news + social).
-* Multi-key rotation enables higher throughput: up to 5 keys = 1,000 RPD (200 × 5).
-* Configure rotation strategy in `orbit.yaml`: `sources.gemini.rotation_strategy: "round_robin"` or `"least_used"`.
-* If only 1 key provided, system operates with single-key quota (200 RPD on free tier).
+* Multi-key rotation enables higher throughput: up to 5 keys = 5,000 RPD (1,000 × 5).
+* Rotation strategy: System uses round-robin by default (configurable via `batch_score_gemini()` parameter).
+* If only 1 key provided, system operates with single-key quota (1,000 RPD on free tier).
 
 **Free tier limits (per key):**
 * Model: Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite)
-* 30 RPM, 1M TPM, 200 RPD
-* Typical usage: ~50-80 items/day = 1-2 batch requests
+* 30 RPM, 1M TPM, 1,000 RPD
+* Typical usage: ~50-80 items/day = 1 batch request
 
 **Export examples:**
 ```bash
@@ -153,7 +153,6 @@ export GEMINI_API_KEY_3="AIza..."
 
 * `ORBIT_USER_AGENT`  ← used for all HTTP requests when the source allows custom UA.
 * `ORBIT_DATA_DIR` ← **IMPORTANT:** Path to production data (set to `/srv/orbit/data` for production)
-* (optional) `ORBIT_CONFIG_PATH` to override config file location.
 * (optional) `ORBIT_LOG_LEVEL` to set logging verbosity (default: INFO)
 
 ## Acceptance checklist

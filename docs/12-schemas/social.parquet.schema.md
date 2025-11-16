@@ -1,35 +1,57 @@
 # ORBIT — social.parquet
 
-*Last edited: 2025-11-06*
+*Last edited: 2025-11-16*
 
 ## File Location
 
-`data/social/YYYY/MM/DD/reddit.parquet`
+**Raw:** `data/raw/social/date=YYYY-MM-DD/social.parquet`
+**Curated:** `data/curated/social/date=YYYY-MM-DD/social.parquet` (after preprocessing)
 
-## Schema
+**Examples:**
+- `data/raw/social/date=2024-11-05/social.parquet`
+- `data/curated/social/date=2024-11-05/social.parquet`
+
+## Raw Schema (Post-Ingestion)
+
+Written by `orbit ingest social-backfill` from Arctic Shift Reddit API.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | `string` | No | Reddit post ID |
-| `created_utc` | `timestamp` | No | Post creation time (ET) |
+| `created_utc` | `timestamp` | No | Post creation time (UTC with TZ) |
 | `subreddit` | `string` | No | Subreddit name |
-| `author` | `string` | No | Reddit username (hashed for privacy) |
-| `author_karma` | `int64` | Yes | Author karma score |
-| `author_age_days` | `int64` | Yes | Account age in days |
+| `author` | `string` | No | Hashed username (format: `hash_XXXXXXXX`) |
+| `author_karma` | `int64` | Yes | Author karma (NULL for Arctic API) |
+| `author_age_days` | `int64` | Yes | Account age (NULL for Arctic API) |
 | `title` | `string` | No | Post title |
-| `body` | `string` | Yes | Post body text (may be empty for link posts) |
+| `body` | `string` | Yes | Post body text (NULL if removed/deleted) |
 | `permalink` | `string` | No | Reddit permalink |
-| `upvote_ratio` | `float64` | Yes | Upvote ratio (0 to 1) |
+| `upvote_ratio` | `float64` | Yes | Upvote ratio 0-1 (NULL for Arctic API) |
 | `num_comments` | `int64` | No | Number of comments |
-| `symbols` | `list<string>` | Yes | Mapped symbols (["SPY", "VOO"]) |
-| `sentiment_gemini` | `float64` | Yes | Gemini score (-1 to +1, if escalated) |
-| `sarcasm_flag` | `bool` | Yes | Gemini sarcasm detection |
-| `novelty_score` | `float64` | Yes | Dissimilarity to prior 7d (0 to 1) |
-| `content_hash` | `string` | No | Hash for deduplication |
-| `ingestion_ts` | `timestamp` | No | When ingested (ET) |
-| `ingestion_complete` | `bool` | No | True if full day captured without gaps |
-| `ingestion_gaps_minutes` | `int32` | Yes | Total minutes of known API rate limiting |
-| `last_successful_fetch_utc` | `timestamp` | Yes | Last successful API response |
+| `symbols` | `list<string>` | No | Matched terms: SPY, VOO, market, or "off-topic" |
+| `sentiment_gemini` | `float64` | Yes | Gemini sentiment score (NULL until LLM scoring) |
+| `sarcasm_flag` | `bool` | Yes | Sarcasm detection (NULL until LLM scoring) |
+| `novelty_score` | `float64` | Yes | Novelty score (NULL until preprocessing) |
+| `content_hash` | `string` | No | SHA256 hash for deduplication (16 chars) |
+| `ingestion_ts` | `timestamp` | No | When ingested (UTC) |
+| `ingestion_complete` | `bool` | No | True if full fetch completed |
+| `ingestion_gaps_minutes` | `int64` | No | Minutes of gaps (0 for backfill) |
+| `last_successful_fetch_utc` | `timestamp` | No | Last successful API fetch |
+
+## Curated Schema (Post-Preprocessing)
+
+Additional fields added by `orbit preprocess`:
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| *(all raw fields)* | | | All fields from raw schema |
+| `is_dupe` | `bool` | No | True if duplicate (simhash-based) |
+| `cluster_id` | `string` | No | ID of duplicate cluster leader |
+| `novelty` | `float64` | Yes | Novelty vs 7-day window [0,1] |
+| `window_start_et` | `timestamp` | No | Membership window start (T-1 15:30 ET) |
+| `window_end_et` | `timestamp` | No | Membership window end (T 15:30 ET) |
+| `cutoff_applied_at` | `timestamp` | No | When preprocessing ran (UTC) |
+| `dropped_late_count` | `int64` | No | Items dropped by safety lag |
 
 ## Sample Row
 

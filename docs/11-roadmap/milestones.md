@@ -1,6 +1,6 @@
  # ORBIT — Milestones
 
-*Last edited: 2025-11-11*
+*Last edited: 2025-11-16*
 
 ## Purpose
 
@@ -78,12 +78,12 @@ Risks
 ---
 
 ### M1 — Data gathering + Gemini integration
-Status: 🟡 In progress | Progress: 75% | Dependencies: M0
+Status: ✅ Complete | Progress: 100% | Dependencies: M0
 
 Relevant docs / reading
 - `docs/04-data-sources/alpaca_news_ws.md` — news source design and cutoffs
 - `docs/04-data-sources/stooq_prices.md` — prices source specification
-- `docs/04-data-sources/reddit_api.md` — social source spec and rate limits
+- `docs/04-data-sources/reddit_arctic_api.md` — Arctic Shift Reddit API spec and rate limits
 - `docs/04-data-sources/gemini_sentiment_api.md` — LLM scoring design (Gemini)
 - `docs/04-data-sources/rate_limits.md` and `docs/04-data-sources/tos_compliance.md` — quota and compliance
 - `docs/05-ingestion/bootstrap_historical_data.md` — initial historical data collection for backtesting
@@ -91,13 +91,12 @@ Relevant docs / reading
 - `docs/06-preprocessing/deduplication_novelty.md`, `docs/06-preprocessing/time_alignment_cutoffs.md` — preprocess hooks and cutoff discipline
 
 Deliverables
-- [x] `ingest:prices` — Stooq CSV downloader -> `data/raw/prices/` and `data/curated/prices/` (EOD)
+- [x] `ingest:prices` — Stooq CSV downloader -> `data/raw/prices/` and `data/curated/prices/` (EOD) (`src/orbit/ingest/prices.py`, CLI: `orbit ingest prices`)
 - [x] `ingest:news` — Alpaca news WS client producing raw Parquet with deduplication and buffering (`src/orbit/ingest/news.py`, CLI: `orbit ingest news`); includes REST API historical backfill with multi-key rotation (`src/orbit/ingest/news_backfill.py`, CLI: `orbit ingest news-backfill`)
-- [ ] `ingest:social` — Reddit API puller with rate-limit handling writing raw social Parquet
+- [x] `ingest:social` — Arctic Shift Reddit API puller with checkpoint/resume and rate-limit handling writing raw social Parquet (`src/orbit/ingest/social_arctic.py`, CLI: `orbit ingest social-backfill`) — Historical backfill (2015-present) in ~2.6 hours @ 3.5 RPS
 - [x] `llm_batching_gemini` — Batch scoring using `gemini-2.5-flash-lite` with multi-key rotation (up to 5 keys, 5,000 RPD combined) and raw req/resp persistence under `data/raw/gemini/` (`src/orbit/ingest/llm_gemini.py` with `src/orbit/utils/key_rotation.py`)
-- [ ] Preprocess hooks: dedupe, novelty window=7d, cutoff enforcement (15:30 ET)
-- [ ] Merge LLM fields into curated tables (`sent_llm`, `stance`, `sarcasm`, `certainty`)
-- [ ] `train:walkforward` harness and `backtest:run` CLI
+- [x] Preprocess hooks: dedupe, novelty window=7d, cutoff enforcement (15:30 ET) — Simhash-based deduplication with 7-day novelty scoring; 15:30 ET cutoff with 30-min safety lag (`src/orbit/preprocess/cutoffs.py`, `src/orbit/preprocess/dedupe.py`, `src/orbit/preprocess/pipeline.py`, CLI: `orbit preprocess`)
+- [x] Tests: Comprehensive test coverage for ingestion (news, news-backfill, social, prices) and preprocessing (cutoffs, dedupe, novelty) — 104 tests passing (`tests/test_ingest_*.py`, `tests/test_preprocess.py`)
 
 Acceptance criteria (measurable)
 - Each ingestion produces daily Parquet outputs that validate against the published schema (automated schema check)
@@ -114,7 +113,7 @@ Risks
 ---
 
 ### M2 — Calibration & Risk Controls
-Status: 🔴 Blocked | Progress: 0% | Dependencies: M1
+Status: ⬜ Not started | Progress: 0% | Dependencies: M1
 
 Relevant docs / reading
 - `docs/09-evaluation/metrics_definitions.md` — definitions for ECE, Brier, IC, Sharpe

@@ -188,6 +188,67 @@ def cmd_ingest_news_backfill(symbols=None, start_date=None, end_date=None, multi
         return 1
 
 
+def cmd_ingest_social_backfill(subreddits=None, start_date=None, end_date=None):
+    """Run historical social backfill from Arctic Shift Reddit API (M1 deliverable).
+
+    Fetches historical Reddit posts for backtesting using Arctic Shift Photon Reddit API.
+    This is an unofficial archive service - no API key required.
+
+    Recommended usage: Run in tmux/screen for reliability during multi-hour backfills.
+    Implements checkpoint/resume - can be interrupted and restarted safely.
+    """
+    from orbit.ingest import social_arctic
+    from orbit import io
+
+    print("Running social backfill from Arctic Shift Reddit API...")
+
+    # Show data directory being used
+    data_dir = io.get_data_dir()
+    print(f"Data directory: {data_dir}")
+
+    # Warn if using default ./data location
+    if str(data_dir) == "data" or data_dir == Path("data"):
+        print("\n" + "="*70)
+        print("WARNING: Using default ./data directory")
+        print("For production, set ORBIT_DATA_DIR in your .env file:")
+        print("  echo 'ORBIT_DATA_DIR=/srv/orbit/data' >> .env")
+        print("="*70 + "\n")
+
+    # Validate dates
+    if not start_date or not end_date:
+        print("✗ Error: --start and --end dates are required", file=sys.stderr)
+        print("Example: orbit ingest social-backfill --start 2015-01-01 --end 2025-11-15", file=sys.stderr)
+        return 1
+
+    # Default subreddits
+    if not subreddits:
+        subreddits = social_arctic.DEFAULT_SUBREDDITS
+
+    print(f"Subreddits: {', '.join(subreddits)}")
+    print(f"Date range: {start_date} to {end_date}")
+    print(f"Target rate: {social_arctic.TARGET_RPS} requests/second")
+    print()
+
+    try:
+        # Run backfill
+        result = social_arctic.backfill_social(
+            start_date=start_date,
+            end_date=end_date,
+            subreddits=subreddits,
+            data_dir=data_dir,
+            resume=True,
+        )
+
+        print(f"\n✓ Social backfill completed successfully!")
+        return 0
+
+    except Exception as e:
+        print(f"\n✗ Error during social backfill: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
 def cmd_ingest_local_sample():
     """Run ingestion on local sample data (M0 deliverable).
 
@@ -221,6 +282,65 @@ def cmd_ingest_local_sample():
     except Exception as e:
         print(f"✗ Error during ingest: {e}", file=sys.stderr)
         print("\nHint: Run 'python src/orbit/utils/generate_samples.py' to create sample data", file=sys.stderr)
+        return 1
+
+
+def cmd_preprocess(start_date=None, end_date=None, sources=None, reference_window_days=7, safety_lag_minutes=30, training=True):
+    """Run preprocessing pipeline (M1 deliverable).
+
+    Applies cutoff enforcement, deduplication, and novelty scoring.
+    Processes raw data from data/raw/ and writes to data/curated/.
+    """
+    from orbit.preprocess import pipeline
+    from orbit import io
+
+    print("Running preprocessing pipeline...")
+
+    # Show data directory
+    data_dir = io.get_data_dir()
+    print(f"Data directory: {data_dir}")
+
+    # Validate dates
+    if not start_date or not end_date:
+        print("✗ Error: --start and --end dates are required", file=sys.stderr)
+        print("Example: orbit preprocess --start 2024-01-01 --end 2024-12-31", file=sys.stderr)
+        return 1
+
+    # Default sources
+    if not sources:
+        sources = ['news', 'social']
+
+    print(f"Sources: {', '.join(sources)}")
+    print(f"Date range: {start_date} to {end_date}")
+    print(f"Reference window: {reference_window_days} days")
+    print(f"Safety lag: {safety_lag_minutes} minutes")
+    print(f"Training mode: {training}")
+    print()
+
+    try:
+        # Run preprocessing
+        stats = pipeline.preprocess_date_range(
+            start_date=start_date,
+            end_date=end_date,
+            sources=sources,
+            data_dir=data_dir,
+            reference_window_days=reference_window_days,
+            safety_lag_minutes=safety_lag_minutes,
+            training=training,
+        )
+
+        print(f"\n✓ Preprocessing completed successfully!")
+        print(f"  Total days: {stats['total_days']}")
+        print(f"  Processed news days: {stats['processed_news']}")
+        print(f"  Processed social days: {stats['processed_social']}")
+        print(f"  Total news items: {stats['total_news_items']}")
+        print(f"  Total social items: {stats['total_social_items']}")
+        return 0
+
+    except Exception as e:
+        print(f"\n✗ Error during preprocessing: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return 1
 
 
@@ -346,11 +466,73 @@ def main(argv=None):
         help="Use single key mode (default: multi-key if available)"
     )
 
+    # ingest social-backfill subcommand (M1)
+    social_backfill_parser = ingest_subparsers.add_parser(
+        "social-backfill",
+        help="Backfill historical Reddit posts from Arctic Shift API (M1)",
+        description="Fetch historical Reddit posts for backtesting (no API key required)"
+    )
+    social_backfill_parser.add_argument(
+        "--subreddits",
+        nargs="+",
+        help="Subreddits to fetch (default: stocks investing wallstreetbets)"
+    )
+    social_backfill_parser.add_argument(
+        "--start",
+        required=True,
+        help="Start date (YYYY-MM-DD)"
+    )
+    social_backfill_parser.add_argument(
+        "--end",
+        required=True,
+        help="End date (YYYY-MM-DD)"
+    )
+
     # ingest --local-sample flag (M0 backward compatibility)
     ingest_parser.add_argument(
         "--local-sample",
         action="store_true",
         help="Use sample data from ./data/sample/ (M0 mode - no external APIs)"
+    )
+
+    # preprocess command (M1)
+    preprocess_parser = subparsers.add_parser(
+        "preprocess",
+        help="Preprocess raw data (M1)",
+        description="Apply cutoff enforcement, deduplication, and novelty scoring"
+    )
+    preprocess_parser.add_argument(
+        "--start",
+        required=True,
+        help="Start date (YYYY-MM-DD)"
+    )
+    preprocess_parser.add_argument(
+        "--end",
+        required=True,
+        help="End date (YYYY-MM-DD)"
+    )
+    preprocess_parser.add_argument(
+        "--sources",
+        nargs="+",
+        choices=["news", "social"],
+        help="Sources to preprocess (default: news social)"
+    )
+    preprocess_parser.add_argument(
+        "--reference-window",
+        type=int,
+        default=7,
+        help="Reference window for novelty scoring in days (default: 7)"
+    )
+    preprocess_parser.add_argument(
+        "--safety-lag",
+        type=int,
+        default=30,
+        help="Safety lag in minutes for training (default: 30)"
+    )
+    preprocess_parser.add_argument(
+        "--inference",
+        action="store_true",
+        help="Inference mode (no safety lag)"
     )
 
     # features command
@@ -386,14 +568,32 @@ def main(argv=None):
                 end_date=getattr(args, 'end', None),
                 multi_key=not getattr(args, 'single_key', False),
             )
+        # M1: ingest social-backfill (historical data from Arctic Shift Reddit API)
+        elif hasattr(args, 'source') and args.source == "social-backfill":
+            return cmd_ingest_social_backfill(
+                subreddits=getattr(args, 'subreddits', None),
+                start_date=getattr(args, 'start', None),
+                end_date=getattr(args, 'end', None),
+            )
         # M0: ingest --local-sample (sample data)
         elif args.local_sample:
             return cmd_ingest_local_sample()
         else:
             ingest_parser.print_help()
-            print("\nAvailable sources: prices, news, news-backfill", file=sys.stderr)
+            print("\nAvailable sources: prices, news, news-backfill, social-backfill", file=sys.stderr)
             print("Or use: orbit ingest --local-sample (M0 mode)", file=sys.stderr)
             return 1
+
+    elif args.command == "preprocess":
+        # M1: preprocess (cutoff enforcement, dedupe, novelty)
+        return cmd_preprocess(
+            start_date=getattr(args, 'start', None),
+            end_date=getattr(args, 'end', None),
+            sources=getattr(args, 'sources', None),
+            reference_window_days=getattr(args, 'reference_window', 7),
+            safety_lag_minutes=getattr(args, 'safety_lag', 30),
+            training=not getattr(args, 'inference', False),
+        )
 
     elif args.command == "features":
         if args.from_sample:

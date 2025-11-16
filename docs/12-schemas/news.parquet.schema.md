@@ -1,95 +1,108 @@
-# ORBIT — news.parquet
+# ORBIT — news.parquet (Raw)
 
-*Last edited: 2025-11-06*
+*Last edited: 2025-11-16*
 
 ## File Location
 
-`data/news/YYYY/MM/DD/alpaca.parquet`
+**Raw data (as ingested):**
+- WebSocket: `data/raw/news/date=YYYY-MM-DD/news.parquet`
+- Backfill: `data/raw/news/date=YYYY-MM-DD/news_backfill.parquet`
 
-## Schema
+**Curated data (after preprocessing):**
+- `data/curated/news/date=YYYY-MM-DD/news.parquet` (includes sentiment, novelty, quality filters)
+
+## Raw Schema (WebSocket & Backfill)
+
+This is the schema for **raw ingested data** before preprocessing.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
-| `id` | `string` | No | Unique news item ID (from Alpaca) |
-| `published_at` | `timestamp` | No | Publication timestamp (ET) |
+| `msg_id` | `int64` or `string` | No | Unique message ID (int from Alpaca API, string hash if ID missing) |
+| `published_at` | `timestamp[ns, UTC]` | No | Publication timestamp (UTC, from `created_at` or `updated_at`) |
+| `received_at` | `timestamp[ns, UTC]` | No | When our client received/fetched the message (UTC) |
+| `symbols` | `list<string>` | No | Symbols tagged by Alpaca (e.g., ["SPY", "VOO"]) |
 | `headline` | `string` | No | Article headline |
-| `summary` | `string` | Yes | Article summary/snippet |
-| `author` | `string` | Yes | Author name |
-| `source` | `string` | No | News source (e.g., "Reuters", "Bloomberg") |
+| `summary` | `string` | Yes | Article summary/snippet (empty string if not provided) |
+| `source` | `string` | No | News source (e.g., "benzinga", "Reuters") |
 | `url` | `string` | Yes | Article URL |
-| `symbols` | `list<string>` | Yes | Mapped symbols (["SPY", "VOO"]) |
-| `sentiment_gemini` | `float64` | Yes | Gemini score (-1 to +1, if escalated) |
-| `novelty_score` | `float64` | Yes | Dissimilarity to prior 7d (0 to 1) |
-| `content_hash` | `string` | No | Hash for deduplication |
-| `ingestion_ts` | `timestamp` | No | When ingested (ET) |
-| `ingestion_complete` | `bool` | No | True if full day captured without gaps |
-| `ingestion_gaps_minutes` | `int32` | Yes | Total minutes of known disconnection/outage |
-| `last_successful_fetch_utc` | `timestamp` | Yes | Last successful WS message received |
+| `raw` | `string` (JSON) | No | Original message payload as JSON string (for audit) |
+| `run_id` | `string` | No | Ingestion run identifier (format: YYYYMMDD_HHMMSS[_backfill]) |
 
-## Sample Row
+## Sample Row (Raw)
 
 ```json
 {
-  "id": "alpaca_news_12345",
-  "published_at": "2024-11-05T14:23:15-05:00",
-  "headline": "Fed Holds Rates Steady Amid Inflation Concerns",
-  "summary": "The Federal Reserve kept interest rates unchanged...",
-  "author": "Jane Smith",
-  "source": "Reuters",
-  "url": "https://reuters.com/...",
-  "symbols": ["SPY", "VOO"],
-    "sentiment_gemini": null,
-  "novelty_score": 0.87,
-  "content_hash": "sha256:abc123...",
-  "ingestion_ts": "2024-11-05T15:30:02-05:00",
-  "ingestion_complete": true,
-  "ingestion_gaps_minutes": 0,
-  "last_successful_fetch_utc": "2024-11-05T20:30:02+00:00"
+  "msg_id": 32179852,
+  "published_at": "2023-05-03T06:11:16+00:00",
+  "received_at": "2025-11-16T03:08:30.482886+00:00",
+  "symbols": ["AAPL", "KRE", "QQQ", "SPY"],
+  "headline": "Jim Cramer Identifies 4 Hurdles Facing Investors Today",
+  "summary": "",
+  "source": "benzinga",
+  "url": "https://www.benzinga.com/markets/equities/23/05/32179852/...",
+  "raw": "{\"author\": \"Bhavik Nair\", \"content\": \"\", \"created_at\": \"2023-05-03T06:11:16Z\", \"headline\": \"...\", \"id\": 32179852, \"source\": \"benzinga\", \"symbols\": [\"AAPL\", \"KRE\", \"QQQ\", \"SPY\"], \"updated_at\": \"2023-05-03T06:11:16Z\", \"url\": \"...\"}",
+  "run_id": "20251116_025027_backfill"
 }
 ```
 
-## Constraints
+## Constraints (Raw Data)
 
-- `headline` length: 10-500 chars
-- `published_at` ≤ `ingestion_ts`
-- At least one symbol mapped
-- Sentiment scores in [-1, 1] if present
-- `ingestion_gaps_minutes` ≥ 0 (0 if complete)
-- `ingestion_complete` = False if gaps > 30 minutes
+- `headline` length: >0 chars (no max enforced at ingestion)
+- `published_at` ≤ `received_at` (with 30s tolerance for clock skew)
+- `published_at` ≤ now() + 30s (not in future)
+- `symbols` list: non-empty (at least one symbol from Alpaca)
+- `msg_id`: unique within partition (deduplication enforced)
+- `run_id` format: `YYYYMMDD_HHMMSS` or `YYYYMMDD_HHMMSS_backfill`
 
-## Data Completeness Tracking
+## Data Sources
 
-**Purpose:** Track WebSocket connection quality to detect partial day captures.
+**Two ingestion paths produce this raw schema:**
 
-**Fields:**
-- `ingestion_complete`: Set to `False` if WS disconnection lasted >5 minutes or if <80% of expected trading hours covered
-- `ingestion_gaps_minutes`: Sum of all disconnection periods during trading hours (9:30-15:30 ET)
-- `last_successful_fetch_utc`: Updated with each successful WS message; used to detect stale connections
+1. **WebSocket (real-time)**: `orbit ingest news`
+   - Connects to Alpaca News WebSocket
+   - Streams news during market hours
+   - Writes to `news.parquet` (no suffix)
+   - `run_id` format: `YYYYMMDD_HHMMSS`
 
-**Example Scenarios:**
+2. **REST Backfill (historical)**: `orbit ingest news-backfill`
+   - Fetches historical news via Alpaca REST API
+   - Used for bootstrap and gap-filling
+   - Writes to `news_backfill.parquet` (suffix)
+   - `run_id` format: `YYYYMMDD_HHMMSS_backfill`
 
-**Scenario 1: Complete Day**
-```python
-ingestion_complete = True
-ingestion_gaps_minutes = 0
-# All hours from 9:30-15:30 ET captured
-```
+**Both produce identical schema** - preprocessing merges them transparently.
 
-**Scenario 2: Brief Disconnect**
-```python
-ingestion_complete = True
-ingestion_gaps_minutes = 3
-# WS disconnected 11:00-11:03 (3 min), reconnected successfully
-# Still considered complete (< 5 min gap)
-```
+## Curated Schema (After Preprocessing)
 
-**Scenario 3: Major Outage**
-```python
-ingestion_complete = False
-ingestion_gaps_minutes = 180
-# WS disconnected 11:00-14:00 (3 hours), missing significant data
-# Marked incomplete
-```
+After raw data passes through preprocessing pipeline, additional fields are computed:
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| *(all raw fields)* | | | All fields from raw schema preserved |
+| `is_dupe` | `bool` | No | True if near-duplicate (Hamming distance ≤3) |
+| `cluster_id` | `string` | No | ID of cluster leader (earliest duplicate) |
+| `novelty` | `float64` | Yes | Novelty score vs 7-day reference window [0, 1] (null for duplicates) |
+| `window_start_et` | `timestamp[ns, UTC]` | No | Start of 15:30 ET cutoff window (T-1 15:30) |
+| `window_end_et` | `timestamp[ns, UTC]` | No | End of 15:30 ET cutoff window (T 15:30) |
+| `cutoff_applied_at` | `timestamp[ns, UTC]` | No | When preprocessing was applied |
+| `sent_llm` | `float64` | Yes | Gemini sentiment score in [-1, 1] (if LLM scored) |
+| `stance` | `string` | Yes | "bull", "bear", or "neutral" (if LLM scored) |
+| `sarcasm` | `bool` | Yes | Sarcasm flag (if LLM scored) |
+| `certainty` | `float64` | Yes | Sentiment certainty [0, 1] (if LLM scored) |
+| `toxicity` | `float64` | Yes | Toxicity score [0, 1] (if LLM scored) |
+
+**Curated location**: `data/curated/news/date=YYYY-MM-DD/news.parquet`
+
+**Preprocessing steps** (in order):
+1. **Cutoff enforcement**: Filter to (T-1 15:30, T 15:30] ET window (see `cutoffs.py`)
+2. **Deduplication**: Simhash with 3-gram tokenization, Hamming distance ≤3 (see `dedupe.py`)
+3. **Novelty scoring**: Compare vs 7-day reference window (see `dedupe.py`)
+4. **LLM sentiment** (optional): Gemini 2.5 Flash-Lite batch scoring (see `llm_gemini.py`)
+
+**Notes:**
+- LLM fields (`sent_llm`, `stance`, `sarcasm`, `certainty`, `toxicity`) are **optional** and only present if LLM scoring was run
+- Novelty is null for duplicates (only cluster leaders get novelty scores)
+- Deduplication uses simhash (64-bit), not content hashing
 
 ## Related Files
 
@@ -98,45 +111,61 @@ ingestion_gaps_minutes = 180
 
 ---
 
-## Validation Script
+## Validation Script (Raw Data)
 
 ```bash
-python -m orbit.ops.validate_schema --source news --date 2024-11-05
+python -m orbit.ops.validate_schema --source news --date 2025-11-15
 ```
 
-**Validation checks:**
+**Validation checks for raw data:**
 - Schema conformance (columns, types)
-- Sentiment scores in [-1, 1]
-- No duplicates by `id` or `content_hash`
-- `published_at` ≤ `ingestion_ts`
-- `published_at` ≤ 15:30 ET cutoff for day T
-- At least one symbol mapped
+- No duplicates by `msg_id` within partition
+- `published_at` ≤ `received_at` (with tolerance)
+- `published_at` not in future
+- `symbols` list non-empty
+- `headline` non-empty
 
 **Example validation:**
 
 ```python
-def validate_news(file_path):
+def validate_raw_news(file_path):
     df = pd.read_parquet(file_path)
     errors = []
     
-    # Sentiment bounds
-    for col in ['sentiment_gemini']:
-        if col in df.columns:
-            valid = df[col].dropna().between(-1, 1).all()
-            if not valid:
-                errors.append(f"{col} outside [-1, 1]")
+    # Required columns
+    required = ['msg_id', 'published_at', 'received_at', 'symbols', 
+                'headline', 'source', 'url', 'raw', 'run_id']
+    missing = set(required) - set(df.columns)
+    if missing:
+        errors.append(f"Missing columns: {missing}")
     
     # Timestamps
-    if (df['published_at'] > df['ingestion_ts']).any():
-        errors.append("published_at > ingestion_ts")
+    # Allow 30s tolerance for clock skew
+    tolerance = pd.Timedelta(seconds=30)
+    invalid_ts = (df['published_at'] > df['received_at'] + tolerance).sum()
+    if invalid_ts > 0:
+        errors.append(f"published_at > received_at: {invalid_ts} rows")
+    
+    # Future timestamps
+    now = pd.Timestamp.utcnow()
+    future = (df['published_at'] > now + tolerance).sum()
+    if future > 0:
+        errors.append(f"Future published_at: {future} rows")
     
     # Duplicates
-    if df['id'].duplicated().any():
-        errors.append(f"Duplicate IDs: {df['id'].duplicated().sum()}")
+    dupes = df['msg_id'].duplicated().sum()
+    if dupes > 0:
+        errors.append(f"Duplicate msg_id: {dupes}")
     
-    # Symbol mapping
-    if df['symbols'].isna().all():
-        errors.append("No symbols mapped")
+    # Empty fields
+    empty_headlines = (df['headline'].str.strip() == '').sum()
+    if empty_headlines > 0:
+        errors.append(f"Empty headlines: {empty_headlines}")
+    
+    # Empty symbols
+    empty_symbols = df['symbols'].apply(lambda x: len(x) == 0 if isinstance(x, list) else True).sum()
+    if empty_symbols > 0:
+        errors.append(f"Empty symbols: {empty_symbols}")
     
     return errors
 ```
@@ -145,51 +174,78 @@ def validate_news(file_path):
 
 ## Common Access Patterns
 
-### Load News for Single Day
+### Load Raw News for Single Day
 
 ```python
-df = pd.read_parquet('data/news/2024/11/05/alpaca.parquet')
+import pandas as pd
+import glob
+
+# Load all news for a specific date (WebSocket + backfill)
+date_path = 'data/raw/news/date=2023-05-03'
+files = glob.glob(f'{date_path}/*.parquet')
+df = pd.concat([pd.read_parquet(f) for f in files])
 
 # Filter to SPY-relevant news
-spy_news = df[df['symbols'].apply(lambda x: 'SPY' in x if x else False)]
+spy_news = df[df['symbols'].apply(lambda x: 'SPY' in x if isinstance(x, list) else False)]
+
+print(f"Total news: {len(df)}, SPY-tagged: {len(spy_news)}")
 ```
 
-### Aggregate Sentiment by Day
+### Merge WebSocket and Backfill Data
 
 ```python
-# Load date range
-df = pd.read_parquet(
-    'data/news/',
-    filters=[('published_at', '>=', '2024-11-01')]
-)
+# Load both sources for date range
+import glob
 
-# Daily sentiment average
-daily = df.groupby(df['published_at'].dt.date).agg({
-    'sentiment_gemini': 'mean',
-    'novelty_score': 'mean',
-    'id': 'count'
-}).rename(columns={'id': 'news_count'})
+all_files = glob.glob('data/raw/news/date=2023-*/news*.parquet')
+df = pd.concat([pd.read_parquet(f) for f in all_files])
+
+# Deduplicate by msg_id (prefer WebSocket over backfill if duplicate)
+df = df.sort_values('run_id').drop_duplicates(subset='msg_id', keep='first')
+
+print(f"Total unique news items: {len(df)}")
 ```
 
-### Filter by Source Quality
+### Count News by Source
 
 ```python
-# High-quality sources only
-quality_sources = ['Reuters', 'Bloomberg', 'WSJ']
-df_quality = df[df['source'].isin(quality_sources)]
+df = pd.read_parquet('data/raw/news/date=2023-05-03/news_backfill.parquet')
+
+source_counts = df['source'].value_counts()
+print(source_counts)
+# benzinga    45
+# reuters     12
+# ...
 ```
 
-### Check for News Bursts
+### Filter by Symbols
 
 ```python
-# Compute z-score of news count
-daily_counts = df.groupby(df['published_at'].dt.date).size()
-mean_count = daily_counts.rolling(60).mean()
-std_count = daily_counts.rolling(60).std()
-z_score = (daily_counts - mean_count) / std_count
+# Articles mentioning both SPY and VOO
+spy_voo = df[df['symbols'].apply(
+    lambda x: 'SPY' in x and 'VOO' in x if isinstance(x, list) else False
+)]
+```
 
-# Burst days (z > 2.0)
-burst_days = z_score[z_score > 2.0]
+### Check Ingestion Coverage
+
+```python
+import glob
+from datetime import datetime, timedelta
+
+# Check which dates have data
+dates = sorted(set([
+    p.split('date=')[1].split('/')[0] 
+    for p in glob.glob('data/raw/news/date=*/news*.parquet')
+]))
+
+print(f"Data coverage: {dates[0]} to {dates[-1]}")
+print(f"Total days: {len(dates)}")
+
+# Find gaps
+date_objs = [datetime.strptime(d, '%Y-%m-%d').date() for d in dates]
+expected_days = (date_objs[-1] - date_objs[0]).days + 1
+print(f"Missing days: {expected_days - len(dates)}")
 ```
 
 ---
