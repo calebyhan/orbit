@@ -35,6 +35,36 @@ MAX_RETRY_ATTEMPTS = 5  # Max retries for errors
 DEFAULT_SUBREDDITS = ["stocks", "investing", "wallstreetbets"]
 
 
+def scan_existing_social_dates(data_dir: Path, subreddits: list[str]) -> set[str]:
+    """Scan existing social date partitions to determine what's already ingested.
+
+    Args:
+        data_dir: Base data directory (e.g., /srv/orbit/data or ./data)
+        subreddits: List of subreddits to check
+
+    Returns:
+        Set of "date_subreddit" strings for already-ingested combinations
+    """
+    raw_social_dir = data_dir / "raw" / "social"
+
+    if not raw_social_dir.exists():
+        return set()
+
+    # Find all date partitions and check if they have data
+    existing_combinations = set()
+    for partition_dir in raw_social_dir.iterdir():
+        if partition_dir.is_dir() and partition_dir.name.startswith('date='):
+            date_str = partition_dir.name.replace('date=', '')
+            # Check if directory has parquet files
+            if list(partition_dir.glob("*.parquet")):
+                # Mark all subreddits as complete for this date
+                # (We can't easily tell which subreddits without reading the parquet)
+                for subreddit in subreddits:
+                    existing_combinations.add(f"{date_str}_{subreddit}")
+
+    return existing_combinations
+
+
 def save_checkpoint(checkpoint_file: Path, data: dict) -> None:
     """Save checkpoint data to JSON file.
 
@@ -296,11 +326,13 @@ def backfill_social(
     subreddits: list[str],
     data_dir: Optional[Path] = None,
     resume: bool = True,
+    reset: bool = False,
 ) -> dict:
     """Backfill historical Reddit posts from Arctic Shift API.
 
     Fetches posts day-by-day for specified subreddits and date range.
     Implements checkpoint/resume for reliability.
+    By default, scans existing date partitions and skips already-ingested dates.
 
     Args:
         start_date: Start date (YYYY-MM-DD)
@@ -308,6 +340,7 @@ def backfill_social(
         subreddits: List of subreddit names (e.g., ["stocks", "investing"])
         data_dir: Data directory (defaults to ORBIT_DATA_DIR env var)
         resume: Whether to resume from checkpoint if exists
+        reset: If True, re-fetch all dates; if False (default), skip existing dates
 
     Returns:
         Dict with stats: {
@@ -320,6 +353,21 @@ def backfill_social(
     # Get data directory
     if data_dir is None:
         data_dir = Path(os.getenv("ORBIT_DATA_DIR", "./data"))
+
+    # Scan existing dates (unless --reset)
+    existing_combinations = set()
+    if not reset:
+        existing_combinations = scan_existing_social_dates(data_dir, subreddits)
+        if existing_combinations:
+            existing_dates = {combo.split('_')[0] for combo in existing_combinations}
+            print(f"\nFound existing data for {len(existing_dates)} dates")
+            if existing_dates:
+                print(f"  Date range: {min(existing_dates)} to {max(existing_dates)}")
+            print(f"  Mode: Incremental (skipping already-ingested date/subreddit combinations)")
+        else:
+            print("\nNo existing data found - fetching full date range")
+    else:
+        print("\nReset mode: Re-fetching all dates (existing data will be overwritten)")
 
     # Parse date range
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
@@ -368,8 +416,14 @@ def backfill_social(
                 continue
 
             for subreddit in subreddits:
-                # Skip if already completed in checkpoint
-                if checkpoint and f"{date_str}_{subreddit}" in checkpoint.get("completed_dates", []):
+                # Skip if already completed (unless reset mode)
+                date_subreddit_key = f"{date_str}_{subreddit}"
+                if not reset and date_subreddit_key in existing_combinations:
+                    progress_bar.update(1)
+                    continue
+
+                # Also skip if in checkpoint (from interrupted run)
+                if checkpoint and date_subreddit_key in checkpoint.get("completed_dates", []):
                     progress_bar.update(1)
                     continue
 

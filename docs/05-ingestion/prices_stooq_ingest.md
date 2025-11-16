@@ -1,10 +1,12 @@
 # ORBIT — Ingestion: Stooq Prices
 
-*Last edited: 2025-11-10*
+*Last edited: 2025-11-16*
 
 ## Purpose
 
 Fetch **daily OHLCV** CSVs for `SPY.US`, `VOO.US`, and `^SPX` from **Stooq**, normalize to a canonical schema, and append to the raw Parquet lake. Runs **once after close** on trading days.
+
+**Incremental by default**: Scans existing date partitions and only fetches new/missing dates. Use `--reset` to force re-ingestion of all historical data.
 
 ## Inputs
 
@@ -13,7 +15,7 @@ Fetch **daily OHLCV** CSVs for `SPY.US`, `VOO.US`, and `^SPX` from **Stooq**, no
 
 ## Outputs
 
-* **Raw Parquet:** `data/raw/prices/<SYMBOL>.parquet` (symbol-level, all history)
+* **Raw Parquet:** `data/raw/prices/date=YYYY-MM-DD/{SYMBOL}.parquet` (date-partitioned, one file per symbol per date)
 * **Schema:**
 
   * `date: date`
@@ -23,7 +25,31 @@ Fetch **daily OHLCV** CSVs for `SPY.US`, `VOO.US`, and `^SPX` from **Stooq**, no
   * `run_id: string`
   * `ingested_at: timestamp[ns, UTC]`
 
-**Note:** Prices use symbol-level partitioning (one file per symbol) rather than date-level partitioning. Each file contains the complete history for that symbol and is overwritten daily.
+**Note:** Changed from symbol-level (v0) to date-level partitioning (v1). Each date partition contains one file per symbol for that trading day.
+
+## Behavior Modes
+
+### Default (Incremental Mode)
+
+```bash
+orbit ingest prices
+```
+
+- Scans `data/raw/prices/date=*` for existing dates
+- Fetches full history from Stooq (always returns complete data)
+- Filters to only write **new/missing dates** not already in storage
+- **Idempotent**: Running daily only adds new trading day(s)
+
+### Reset Mode
+
+```bash
+orbit ingest prices --reset
+```
+
+- Ignores existing data
+- Fetches full history and writes all dates
+- **Overwrites** existing date partitions
+- Use when: corrupted data, schema changes, or bootstrap from scratch
 
 ## Steps
 
@@ -80,11 +106,12 @@ for sym in symbols:
 
 ## Acceptance checklist
 
-* New rows for each trading day are included in the symbol file.
+* New rows for each trading day are written to date-partitioned storage.
 * Parquet schema matches the **Outputs** definition.
 * QC passes (monotone dates, positive prices, sane volumes).
-* Re‑run fetches full history and overwrites previous file (idempotent).
-* File structure: `data/raw/prices/SPY_US.parquet` (not date-partitioned).
+* **Incremental mode**: Re-running only writes new dates (no duplicate work).
+* **Reset mode**: `--reset` flag re-fetches and overwrites all historical data.
+* File structure: `data/raw/prices/date=YYYY-MM-DD/SPY_US.parquet` (date-partitioned).
 
 ---
 

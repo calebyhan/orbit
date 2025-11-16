@@ -10,19 +10,20 @@ import sys
 from pathlib import Path
 
 
-def cmd_ingest_prices(symbols=None):
-    """Run prices ingestion from Stooq (M1 deliverable).
-
-    Fetches daily OHLCV data for SPY.US, VOO.US, and ^SPX from Stooq,
-    validates, and writes to ORBIT_DATA_DIR/raw/prices/ and ORBIT_DATA_DIR/curated/prices/.
-
-    IMPORTANT: Set ORBIT_DATA_DIR=/srv/orbit/data before running for production.
-    Without it, defaults to ./data which should ONLY contain sample data.
+def cmd_ingest_prices(symbols=None, reset=False):
+    """CLI command for ingesting prices from Stooq.
+    
+    Args:
+        symbols: List of symbols to ingest (defaults to SPY.US, VOO.US, ^SPX)
+        reset: If True, re-fetch all historical data; if False, only fetch new/missing dates
     """
-    from orbit.ingest import prices
+    from orbit.ingest.prices import ingest_prices
     from orbit import io
 
-    print("Running prices ingestion from Stooq...")
+    print("=" * 60)
+    print("ORBIT M1: Ingest Prices from Stooq")
+    print("=" * 60)
+    print()
 
     # Show data directory being used
     data_dir = io.get_data_dir()
@@ -39,18 +40,14 @@ def cmd_ingest_prices(symbols=None):
         print("="*70 + "\n")
 
     try:
-        # Run ingestion
-        results = prices.ingest_prices(
-            symbols=symbols,
-            polite_delay_sec=1.0,  # Be polite to Stooq
-            retries=3,
-        )
+        results = ingest_prices(symbols=symbols, reset=reset)
 
         if results:
             print(f"\n✓ Prices ingestion completed successfully!")
             print(f"  Ingested {len(results)} symbols")
             for symbol, df in results.items():
-                print(f"  - {symbol}: {len(df)} rows (latest: {df['date'].max()})")
+                if not df.empty:
+                    print(f"  - {symbol}: {len(df)} rows (latest: {df['date'].max()})")
             return 0
         else:
             print("\n✗ No symbols successfully ingested", file=sys.stderr)
@@ -121,15 +118,15 @@ def cmd_ingest_news(symbols=None, duration_minutes=None):
         return 1
 
 
-def cmd_ingest_news_backfill(symbols=None, start_date=None, end_date=None, multi_key=True):
-    """Run historical news backfill from Alpaca REST API (M1 deliverable).
-
-    Fetches historical news for backtesting using Alpaca's REST API.
-    Supports multi-key rotation for 5x throughput.
-
-    IMPORTANT: Set ALPACA_API_KEY_1 and ALPACA_API_SECRET_1 in .env (REST API credentials).
-    For multi-key: Set ALPACA_API_KEY_2 through ALPACA_API_KEY_5 for up to 5x throughput.
-    Note: WebSocket (orbit ingest news) uses non-numbered ALPACA_API_KEY/SECRET.
+def cmd_ingest_news_backfill(symbols=None, start_date=None, end_date=None, multi_key=True, reset=False):
+    """CLI command for backfilling historical news from Alpaca REST API.
+    
+    Args:
+        symbols: List of symbols to fetch news for
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        multi_key: Whether to use multi-key rotation (if available)
+        reset: If True, re-fetch all dates; if False, skip already-ingested dates
     """
     from orbit.ingest import news_backfill
     from orbit import io
@@ -161,6 +158,7 @@ def cmd_ingest_news_backfill(symbols=None, start_date=None, end_date=None, multi
             start_date=start_date,
             end_date=end_date,
             use_multi_key=multi_key,
+            reset=reset,
         )
 
         print(f"\n✓ News backfill completed!")
@@ -188,14 +186,14 @@ def cmd_ingest_news_backfill(symbols=None, start_date=None, end_date=None, multi
         return 1
 
 
-def cmd_ingest_social_backfill(subreddits=None, start_date=None, end_date=None):
-    """Run historical social backfill from Arctic Shift Reddit API (M1 deliverable).
-
-    Fetches historical Reddit posts for backtesting using Arctic Shift Photon Reddit API.
-    This is an unofficial archive service - no API key required.
-
-    Recommended usage: Run in tmux/screen for reliability during multi-hour backfills.
-    Implements checkpoint/resume - can be interrupted and restarted safely.
+def cmd_ingest_social_backfill(subreddits=None, start_date=None, end_date=None, reset=False):
+    """CLI command for backfilling historical Reddit posts from Arctic Shift API.
+    
+    Args:
+        subreddits: List of subreddits to fetch
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        reset: If True, re-fetch all dates; if False, skip already-ingested dates
     """
     from orbit.ingest import social_arctic
     from orbit import io
@@ -237,6 +235,7 @@ def cmd_ingest_social_backfill(subreddits=None, start_date=None, end_date=None):
             subreddits=subreddits,
             data_dir=data_dir,
             resume=True,
+            reset=reset,
         )
 
         print(f"\n✓ Social backfill completed successfully!")
@@ -323,7 +322,6 @@ def cmd_preprocess(start_date=None, end_date=None, sources=None, reference_windo
             start_date=start_date,
             end_date=end_date,
             sources=sources,
-            data_dir=data_dir,
             reference_window_days=reference_window_days,
             safety_lag_minutes=safety_lag_minutes,
             training=training,
@@ -421,6 +419,11 @@ def main(argv=None):
         nargs="+",
         help="Symbols to ingest (default: SPY.US VOO.US ^SPX)"
     )
+    prices_parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Re-fetch all historical data (default: incremental - only fetch new/missing dates)"
+    )
 
     # ingest news subcommand (M1)
     news_parser = ingest_subparsers.add_parser(
@@ -465,6 +468,11 @@ def main(argv=None):
         action="store_true",
         help="Use single key mode (default: multi-key if available)"
     )
+    news_backfill_parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Re-fetch all dates (default: incremental - skip already-ingested dates)"
+    )
 
     # ingest social-backfill subcommand (M1)
     social_backfill_parser = ingest_subparsers.add_parser(
@@ -486,6 +494,11 @@ def main(argv=None):
         "--end",
         required=True,
         help="End date (YYYY-MM-DD)"
+    )
+    social_backfill_parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Re-fetch all dates (default: incremental - skip already-ingested dates)"
     )
 
     # ingest --local-sample flag (M0 backward compatibility)
@@ -567,6 +580,7 @@ def main(argv=None):
                 start_date=getattr(args, 'start', None),
                 end_date=getattr(args, 'end', None),
                 multi_key=not getattr(args, 'single_key', False),
+                reset=getattr(args, 'reset', False),
             )
         # M1: ingest social-backfill (historical data from Arctic Shift Reddit API)
         elif hasattr(args, 'source') and args.source == "social-backfill":
@@ -574,6 +588,7 @@ def main(argv=None):
                 subreddits=getattr(args, 'subreddits', None),
                 start_date=getattr(args, 'start', None),
                 end_date=getattr(args, 'end', None),
+                reset=getattr(args, 'reset', False),
             )
         # M0: ingest --local-sample (sample data)
         elif args.local_sample:

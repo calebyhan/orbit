@@ -18,6 +18,38 @@ import requests
 from orbit import io as orbit_io
 
 
+def scan_existing_dates(data_dir: Path, symbols: list[str]) -> set[str]:
+    """Scan existing date partitions to determine what dates are already ingested.
+
+    Args:
+        data_dir: Base data directory (e.g., /srv/orbit/data or ./data)
+        symbols: List of symbols to check
+
+    Returns:
+        Set of date strings (YYYY-MM-DD) that have data for ALL symbols
+    """
+    raw_prices_dir = data_dir / "raw" / "prices"
+
+    if not raw_prices_dir.exists():
+        return set()
+
+    # Find all date partitions
+    date_partitions = [d.name.replace('date=', '') for d in raw_prices_dir.iterdir() if d.is_dir() and d.name.startswith('date=')]
+
+    # For each date, check if ALL symbols have data
+    complete_dates = set()
+    for date_str in date_partitions:
+        date_dir = raw_prices_dir / f"date={date_str}"
+        symbol_files = {f.stem for f in date_dir.glob("*.parquet")}
+
+        # Check if all symbols are present (normalize symbol names)
+        expected_symbols = {s.replace('.', '_').replace('^', '') for s in symbols}
+        if expected_symbols.issubset(symbol_files):
+            complete_dates.add(date_str)
+
+    return complete_dates
+
+
 def fetch_stooq_csv(
     symbol: str,
     base_url: str = "https://stooq.com/q/d/l/",
@@ -134,11 +166,12 @@ def normalize_stooq_csv(
     return df
 
 
-def validate_prices_df(df: pd.DataFrame) -> list[str]:
+def validate_prices_df(df: pd.DataFrame, allow_single_date: bool = False) -> list[str]:
     """Run QC checks on price data.
 
     Args:
         df: Price DataFrame to validate
+        allow_single_date: If True, skip monotonicity checks (for single-day ingestion)
 
     Returns:
         List of validation errors (empty if valid)
@@ -159,8 +192,8 @@ def validate_prices_df(df: pd.DataFrame) -> list[str]:
     # Sort by date for monotonicity check
     df_sorted = df.sort_values("date")
 
-    # Check date monotonicity (strictly increasing within symbol)
-    if df_sorted["date"].duplicated().any():
+    # Check date monotonicity (strictly increasing within symbol) - only if multiple dates
+    if not allow_single_date and df_sorted["date"].duplicated().any():
         dup_dates = df_sorted[df_sorted["date"].duplicated()]["date"].unique()
         errors.append(f"Duplicate dates found: {dup_dates}")
 
@@ -199,6 +232,8 @@ def ingest_prices(
     run_id: Optional[str] = None,
     write_raw: bool = True,
     write_curated: bool = True,
+    reset: bool = False,
+    start_date: Optional[str] = None,
 ) -> dict[str, pd.DataFrame]:
     """Ingest prices from Stooq for specified symbols.
 
@@ -210,12 +245,16 @@ def ingest_prices(
         run_id: Unique run identifier (auto-generated if None)
         write_raw: Whether to write raw data to disk
         write_curated: Whether to write curated data to disk
+        reset: If True, re-fetch all history; if False (default), only fetch missing dates
+        start_date: Optional start date (YYYY-MM-DD) to limit history fetch
 
     Returns:
         Dict mapping symbol to DataFrame
         
     Note:
-        Data is written to ORBIT_DATA_DIR/raw/prices/ and ORBIT_DATA_DIR/curated/prices/.
+        Data is written to ORBIT_DATA_DIR/raw/prices/date=YYYY-MM-DD/{symbol}.parquet.
+        By default, scans existing dates and only fetches new/missing dates.
+        Use --reset to force re-ingestion of all historical data.
         For production, set ORBIT_DATA_DIR=/srv/orbit/data before running.
         Without it, defaults to ./data which should ONLY contain sample data.
     """
@@ -227,16 +266,33 @@ def ingest_prices(
     if run_id is None:
         run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
+    # Get data directory
+    data_dir = orbit_io.get_data_dir()
+
+    # Scan existing dates (unless --reset)
+    existing_dates = set()
+    if not reset:
+        existing_dates = scan_existing_dates(data_dir, symbols)
+        if existing_dates:
+            print(f"Found {len(existing_dates)} existing date partitions")
+            print(f"  Date range: {min(existing_dates)} to {max(existing_dates)}")
+            print(f"  Mode: Incremental (only fetching new/missing dates)")
+        else:
+            print("No existing data found - fetching full history")
+    else:
+        print("Reset mode: Re-fetching all historical data")
+
     print(f"Starting prices ingestion (run_id: {run_id})")
     print(f"Symbols: {symbols}")
 
     results = {}
+    total_dates_written = 0
 
     for symbol in symbols:
         print(f"\nFetching {symbol}...")
 
         try:
-            # Fetch CSV from Stooq
+            # Fetch CSV from Stooq (always fetches full history)
             csv_bytes = fetch_stooq_csv(
                 symbol=symbol,
                 base_url=base_url,
@@ -247,8 +303,25 @@ def ingest_prices(
             # Normalize to canonical schema
             df = normalize_stooq_csv(csv_bytes=csv_bytes, symbol=symbol, run_id=run_id)
 
+            # Apply start_date filter if provided
+            if start_date:
+                df = df[df['date'] >= start_date]
+                print(f"  Filtered to dates >= {start_date}")
+
+            # Filter to only new dates (unless reset mode)
+            if not reset and existing_dates:
+                df_new = df[~df['date'].isin(existing_dates)]
+                skipped = len(df) - len(df_new)
+                if skipped > 0:
+                    print(f"  Skipping {skipped} already-ingested dates")
+                df = df_new
+
+            if df.empty:
+                print(f"  ℹ No new dates to ingest for {symbol}")
+                continue
+
             # Validate
-            errors = validate_prices_df(df)
+            errors = validate_prices_df(df, allow_single_date=True)
             if errors:
                 print(f"  ✗ Validation failed for {symbol}:")
                 for err in errors:
@@ -257,33 +330,43 @@ def ingest_prices(
 
             print(f"  ✓ Fetched {len(df)} rows for {symbol}")
             print(f"    Date range: {df['date'].min()} to {df['date'].max()}")
-            print(f"    Latest close: ${df.iloc[-1]['close']:.2f}")
+            if not df.empty:
+                print(f"    Latest close: ${df.iloc[-1]['close']:.2f}")
 
             results[symbol] = df
 
-            # Write raw data (symbol-level partitioning - all history in one file)
+            # Write raw data (date-partitioned)
             if write_raw:
-                # Use symbol-level partitioning (not date-level)
-                # This is more efficient for historical data where we have all dates at once
                 symbol_clean = symbol.replace('.', '_').replace('^', '')
-                raw_path = f"raw/prices/{symbol_clean}.parquet"
-
-                orbit_io.write_parquet(df, raw_path, overwrite=True)
-                print(f"    → Wrote raw data to {raw_path} ({len(df)} rows)")
+                
+                # Group by date and write to separate partitions
+                dates_written = 0
+                for date_str, group in df.groupby('date'):
+                    raw_path = f"raw/prices/date={date_str}/{symbol_clean}.parquet"
+                    orbit_io.write_parquet(group, raw_path, overwrite=True)
+                    dates_written += 1
+                
+                total_dates_written += dates_written
+                print(f"    → Wrote raw data to {dates_written} date partitions")
 
             # Write curated data (same as raw for prices - no additional cleaning needed)
             if write_curated:
                 symbol_clean = symbol.replace('.', '_').replace('^', '')
-                curated_path = f"curated/prices/{symbol_clean}.parquet"
-
-                orbit_io.write_parquet(df, curated_path, overwrite=True)
-                print(f"    → Wrote curated data to {curated_path} ({len(df)} rows)")
+                
+                # Group by date and write to separate partitions
+                for date_str, group in df.groupby('date'):
+                    curated_path = f"curated/prices/date={date_str}/{symbol_clean}.parquet"
+                    orbit_io.write_parquet(group, curated_path, overwrite=True)
+                
+                print(f"    → Wrote curated data to {dates_written} date partitions")
 
         except Exception as e:
             print(f"  ✗ Error fetching {symbol}: {e}")
             continue
 
     print(f"\n✓ Ingestion complete: {len(results)}/{len(symbols)} symbols succeeded")
+    if total_dates_written > 0:
+        print(f"  Total date partitions written: {total_dates_written}")
 
     return results
 

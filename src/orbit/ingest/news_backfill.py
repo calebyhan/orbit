@@ -56,6 +56,35 @@ def load_checkpoint(checkpoint_file: Path) -> Optional[dict]:
     return None
 
 
+from orbit.utils.key_rotation import KeyRotationManager, RotationStrategy
+
+
+def scan_existing_news_dates(data_dir: Path) -> set[str]:
+    """Scan existing news date partitions to determine what's already ingested.
+
+    Args:
+        data_dir: Base data directory (e.g., /srv/orbit/data or ./data)
+
+    Returns:
+        Set of date strings (YYYY-MM-DD) that already have news data
+    """
+    raw_news_dir = data_dir / "raw" / "news"
+
+    if not raw_news_dir.exists():
+        return set()
+
+    # Find all date partitions
+    existing_dates = set()
+    for partition_dir in raw_news_dir.iterdir():
+        if partition_dir.is_dir() and partition_dir.name.startswith('date='):
+            date_str = partition_dir.name.replace('date=', '')
+            # Check if directory has parquet files
+            if list(partition_dir.glob("*.parquet")):
+                existing_dates.add(date_str)
+
+    return existing_dates
+
+
 def get_alpaca_creds_for_rest() -> tuple[str, str]:
     """Get Alpaca API credentials from environment for REST API.
 
@@ -191,42 +220,48 @@ def backfill_news_date_range(
     quota_rpm: int = TARGET_RPM,
     write_raw: bool = True,
     resume: bool = True,
+    reset: bool = False,
 ) -> dict:
-    """Backfill historical news for a date range using Alpaca REST API.
+    """Backfill historical news from Alpaca REST API.
 
-    This is the main entrypoint for historical news backfill.
-    Supports multi-key rotation for 5x throughput (1,000 RPM vs 200 RPM).
     Optimized for single-key reliability with checkpoint/resume capability.
+    By default, scans existing date partitions and skips already-ingested dates.
 
     Args:
-        symbols: List of symbols to fetch news for (e.g., ["SPY", "VOO"])
-        start_date: Start date in YYYY-MM-DD format
-        end_date: End date in YYYY-MM-DD format
+        symbols: List of symbols (e.g., ["SPY", "VOO"])
+        start_date: Start date in ISO format (e.g., "2020-01-01" or "2020-01-01T00:00:00Z")
+        end_date: End date in ISO format
         run_id: Unique run identifier (auto-generated if None)
         use_multi_key: Whether to use multi-key rotation (default: True)
-        quota_rpm: Requests per minute per key (default: 190 for safety margin)
-        write_raw: Whether to write raw data to disk
+        quota_rpm: Target requests per minute for rate limiting (default: 190)
+        write_raw: Whether to write to disk (default: True)
         resume: Whether to resume from checkpoint if available (default: True)
+        reset: If True, re-fetch all dates; if False (default), skip existing dates
 
     Returns:
-        Dict with statistics:
-        - articles_fetched: Total articles retrieved
-        - requests_made: Total API requests
-        - date_range: Date range covered
-        - run_id: Run identifier
-        - elapsed_time: Total time elapsed in seconds
-
-    Note:
-        Data is written to ORBIT_DATA_DIR/raw/news/date=YYYY-MM-DD/news.parquet
-        Checkpoint saved to .backfill_checkpoint_{run_id}.json every 100 requests
-        Set ALPACA_API_KEY_1 through ALPACA_API_KEY_5 for multi-key mode
-        Single key mode: Takes ~1-2 hours for 10 years of SPY/VOO news
+        Dict with statistics (articles_fetched, requests_made, elapsed_time, etc.)
     """
     # Generate run_id if not provided
     if run_id is None:
         run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_backfill")
 
-    # Checkpoint file
+    # Get data directory
+    data_dir = orbit_io.get_data_dir()
+
+    # Scan existing dates (unless --reset)
+    existing_dates = set()
+    if not reset:
+        existing_dates = scan_existing_news_dates(data_dir)
+        if existing_dates:
+            print(f"\nFound {len(existing_dates)} existing date partitions")
+            print(f"  Date range: {min(existing_dates)} to {max(existing_dates)}")
+            print(f"  Mode: Incremental (skipping already-ingested dates)")
+        else:
+            print("\nNo existing data found - fetching full date range")
+    else:
+        print("\nReset mode: Re-fetching all dates (existing data will be overwritten)")
+
+    # Checkpoint file (still used for mid-run interruption recovery)
     checkpoint_file = Path(f".backfill_checkpoint_{run_id}.json")
 
     # Try to load checkpoint
@@ -307,6 +342,13 @@ def backfill_news_date_range(
 
     while current_date < end_dt:
         next_date = min(current_date + delta, end_dt)
+        current_date_str = current_date.strftime("%Y-%m-%d")
+
+        # Skip if this date already exists (unless reset mode)
+        if not reset and current_date_str in existing_dates:
+            current_date = next_date
+            pbar.update(1)
+            continue
 
         # Format for API
         start_iso = current_date.strftime("%Y-%m-%dT%H:%M:%SZ")

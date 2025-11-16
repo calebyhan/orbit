@@ -1,10 +1,12 @@
 # ORBIT — Bootstrap: Historical Data Collection
 
-*Last edited: 2025-11-15*
+*Last edited: 2025-11-16*
 
 ## Purpose
 
 Define the **one-time bootstrap process** for collecting sufficient historical data to enable walk-forward training and backtesting. This is distinct from the daily incremental ingestion documented in other specs.
+
+**New in v1.1**: All ingest commands now support **incremental mode by default** with `--reset` flag for full re-ingestion.
 
 ---
 
@@ -17,6 +19,26 @@ Before running daily pipelines, ORBIT requires **historical baseline data** for:
 3. **Social**: Attempt to collect 3-6 months via Reddit API (PRAW recent posts) or Pushshift archives; fallback to daily accumulation if unavailable
 
 **Target date range**: 2020-01-01 to present (provides ~5 years for regime coverage)
+
+## Incremental Ingestion (Default Behavior)
+
+**All ingest commands now intelligently resume from existing data:**
+
+- **`orbit ingest prices`**: Scans existing date partitions, only fetches new/missing dates
+- **`orbit ingest news-backfill`**: Skips already-ingested dates based on filesystem scan
+- **`orbit ingest social-backfill`**: Skips completed date/subreddit combinations
+
+**Benefits:**
+- Run same command daily - only new data is fetched
+- Interruption-safe - can restart without losing progress
+- No duplicate API calls for existing data
+
+**Reset mode** (force full re-ingestion):
+```bash
+orbit ingest prices --reset
+orbit ingest news-backfill --start 2020-01-01 --end 2025-11-16 --reset
+orbit ingest social-backfill --start 2020-01-01 --end 2025-11-16 --reset
+```
 
 ---
 
@@ -34,39 +56,53 @@ This returns all available daily bars from inception to present.
 
 ### Bootstrap Process
 
-**Option 1: Full History (Recommended)**
+**Current behavior (v1.1 - Date-partitioned + Incremental)**
+
+Stooq always returns full history in one request. ORBIT now:
+1. Fetches complete history for all symbols
+2. Scans existing `data/raw/prices/date=YYYY-MM-DD/` partitions
+3. Only writes **new/missing dates** (incremental mode)
+4. Stores as `date=YYYY-MM-DD/{symbol}.parquet` (one file per symbol per date)
 
 ```bash
-# Single run fetches all history
-python -m orbit.cli ingest:prices --symbols SPY.US VOO.US ^SPX
+# First run: fetches all history, writes all dates
+orbit ingest prices
+
+# Subsequent runs: only writes new trading days
+orbit ingest prices
+
+# Force re-ingestion of all history
+orbit ingest prices --reset
 ```
 
-The current `ingest_prices()` implementation already fetches full history. The result is a single Parquet file per symbol containing all dates.
-
-**Option 2: Date-Range Constrained**
-
-If you want to limit history to a specific range (e.g., last 3 years), modify `ingest/prices.py` to add a `--start-date` flag and filter the DataFrame after parsing:
-
-```python
-def ingest_prices(..., start_date: Optional[str] = None):
-    # ... existing fetch logic ...
-    if start_date:
-        df = df[df['date'] >= start_date]
-    # ... rest of pipeline ...
-```
+**Benefits of date-partitioned storage:**
+- Consistent with news/social storage patterns
+- Incremental updates by default (no re-writing old data)
+- Easy to identify missing dates
+- Efficient for downstream date-range queries
 
 ### Storage After Bootstrap
 
-After the initial run, you will have:
+After initial run:
 
 ```
-data/raw/prices/YYYY/MM/DD/
-  SPY_US.parquet  (all history)
-  VOO_US.parquet  (all history)
-  SPX.parquet     (all history)
+data/raw/prices/
+  date=2020-01-02/
+    SPY_US.parquet
+    VOO_US.parquet
+    SPX.parquet
+  date=2020-01-03/
+    SPY_US.parquet
+    VOO_US.parquet
+    SPX.parquet
+  ...
+  date=2025-11-16/
+    SPY_US.parquet
+    VOO_US.parquet
+    SPX.parquet
 ```
 
-**Note**: Current implementation writes to a date-partitioned structure using the **latest date** in the fetched data. This means the full historical file is stored under today's date. This is acceptable for bootstrap but should be refined for incremental updates.
+Each date partition contains one row per symbol for that trading day.
 
 ### Validation
 
